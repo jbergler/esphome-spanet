@@ -714,14 +714,47 @@ class SpaNetParser {
       const std::string &line) {
     auto content = trim_(line);
 
-    // Strip "RF:" prefix and optional leading comma from the first response line.
+    // Strip "RF:" prefix (but keep leading comma from the first response line)
     if (content.rfind("RF:", 0) == 0) {
       content = content.substr(3);
-      if (!content.empty() && content[0] == ',') {
-        content = content.substr(1);
-      }
     }
 
+    // Handle real controller format: ,{LABEL},{fields},:
+    if (!content.empty() && content[0] == ',') {
+      content = content.substr(1);  // Strip leading comma
+
+      // Find the trailing : or :*
+      auto colon_pos = content.find(':');
+      if (colon_pos == std::string::npos) {
+        return std::nullopt;
+      }
+
+      // Extract everything before the colon and split by comma
+      auto all_fields = split_by_comma_(content.substr(0, colon_pos));
+      if (all_fields.empty()) {
+        return std::nullopt;
+      }
+
+      // Remove trailing empty fields (from trailing comma)
+      while (!all_fields.empty() && all_fields.back().empty()) {
+        all_fields.pop_back();
+      }
+
+      if (all_fields.empty()) {
+        return std::nullopt;
+      }
+
+      auto label = all_fields[0];
+      if (!is_register_label_(label)) {
+        return std::nullopt;
+      }
+
+      // Remove the label and keep only the data fields
+      all_fields.erase(all_fields.begin());
+      return std::make_pair(label, std::move(all_fields));
+    }
+
+    // Legacy format: {LABEL}:{fields}
     auto colon_pos = content.find(':');
     if (colon_pos == std::string::npos) {
       return std::nullopt;
