@@ -9,6 +9,12 @@ esp32:
 
 logger:
 
+uart:
+  id: spa_uart
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+  baud_rate: 38400
+
 external_components:
   - source:
       type: local
@@ -16,5 +22,6 @@ external_components:
 
 text_sensor:
   - platform: spanet
+    uart_id: spa_uart
     controller:
       name: "SpaNET Controller Model"
