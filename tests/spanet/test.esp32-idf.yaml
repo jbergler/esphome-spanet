@@ -1,0 +1,20 @@
+esphome:
+  name: spanet-dummy
+  friendly_name: SpaNET Dummy
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+
+external_components:
+  - source:
+      type: local
+      path: ../../components
+
+text_sensor:
+  - platform: spanet
+    controller:
+      name: "SpaNET Controller Model"
