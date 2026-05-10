@@ -27,15 +27,36 @@ void SpaNetComponent::loop() {
 void SpaNetComponent::on_uart_message_(const std::string &message) {
   ESP_LOGI(TAG, "Received UART message: %s", message.c_str());
 
-  // TODO: Hand complete messages to parser once parser is implemented.
-  // this->parser_.parse(message);
+  switch (SpaNetParser::classify_message(message)) {
+    case MessageType::kStateUpdate:
+      this->on_state_update_message_(message);
+      break;
+    case MessageType::kAck:
+      this->on_ack_message_(message);
+      break;
+    case MessageType::kUnknown:
+      ESP_LOGW(TAG, "Ignoring unknown UART payload");
+      break;
+  }
+}
+
+void SpaNetComponent::on_state_update_message_(const std::string &message) {
+  if (!this->register_store_.update(message)) {
+    ESP_LOGW(TAG, "Failed to parse SpaNET state update payload");
+    return;
+  }
+  ESP_LOGD(TAG, "Updated register store");
+}
+
+void SpaNetComponent::on_ack_message_(const std::string &message) {
+  // TODO: Match acknowledgements against pending commands and invoke completion callbacks.
+  ESP_LOGI(TAG, "Received command acknowledgement: %s", message.c_str());
 }
 
 void SpaNetComponent::update() {
-  // Dummy hardcoded model value from component runtime logic.
-  // In later steps this will come from parsed controller data.
-  if (this->controller_sensor_ != nullptr) {
-    this->controller_sensor_->publish_state("SVM1");
+  auto identity = this->register_store_.controller_identity();
+  if (this->controller_sensor_ != nullptr && identity.has_value()) {
+    this->controller_sensor_->publish_state(identity->model);
   }
 }
 

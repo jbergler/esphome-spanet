@@ -4,6 +4,7 @@
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/uart/uart.h"
 
+#include "spanet_parser.h"
 #include "uart_rx_buffer.h"
 
 namespace esphome::spanet {
@@ -19,9 +20,12 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
 
  protected:
   void on_uart_message_(const std::string &message);
+  void on_state_update_message_(const std::string &message);
+  void on_ack_message_(const std::string &message);
 
   text_sensor::TextSensor *controller_sensor_{nullptr};
   UartRxBuffer rx_buffer_{256};
+  RfRegisterStore register_store_;
 };
 
 }  // namespace esphome::spanet
