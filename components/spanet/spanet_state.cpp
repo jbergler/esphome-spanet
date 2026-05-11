@@ -1,8 +1,19 @@
 #include "spanet_state.h"
 
+#include <algorithm>
 #include <variant>
 
 namespace esphome::spanet {
+
+static std::string normalize_software_version(const std::string &version) {
+  std::string normalized = version;
+  constexpr const char kPrefix[] = "SW ";
+  if (normalized.rfind(kPrefix, 0) == 0) {
+    normalized.erase(0, sizeof(kPrefix) - 1);
+  }
+  std::replace(normalized.begin(), normalized.end(), ' ', '.');
+  return normalized;
+}
 
 RegisterStore::RegisterStore() {
   this->state = State{
@@ -33,10 +44,9 @@ const Registers &RegisterStore::get_registers() const { return this->registers_;
 void RegisterStore::update_controller_status() {
   if (this->registers_.r3.has_value()) {
     const auto &r3 = this->registers_.r3.value();
-    this->state.controller_status.software_version = r3.software_version;
+    this->state.controller_status.software_version = normalize_software_version(r3.software_version);
     this->state.controller_status.model = r3.model;
-    this->state.controller_status.serial_number_1 = r3.serial_number_1;
-    this->state.controller_status.serial_number_2 = r3.serial_number_2;
+    this->state.controller_status.serial_number = r3.serial_number_1 + "-" + r3.serial_number_2;
   }
 
   if (this->registers_.r2.has_value()) {

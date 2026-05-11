@@ -6,14 +6,34 @@ from . import CONF_SPANET_ID, SpaNetComponent
 
 DEPENDENCIES = ["spanet"]
 
-CONFIG_SCHEMA = text_sensor.text_sensor_schema().extend(
-    {
-        cv.GenerateID(CONF_SPANET_ID): cv.use_id(SpaNetComponent),
-    }
+CONF_CONTROLLER_MODEL = "controller_model"
+CONF_CONTROLLER_SERIAL = "controller_serial"
+CONF_CONTROLLER_FW_VERSION = "controller_fw_version"
+
+CONFIG_SCHEMA = cv.All(
+    cv.Schema(
+        {
+            cv.GenerateID(CONF_SPANET_ID): cv.use_id(SpaNetComponent),
+            cv.Optional(CONF_CONTROLLER_MODEL): text_sensor.text_sensor_schema(),
+            cv.Optional(CONF_CONTROLLER_SERIAL): text_sensor.text_sensor_schema(),
+            cv.Optional(CONF_CONTROLLER_FW_VERSION): text_sensor.text_sensor_schema(),
+        }
+    ),
+    cv.has_at_least_one_key(CONF_CONTROLLER_MODEL, CONF_CONTROLLER_SERIAL, CONF_CONTROLLER_FW_VERSION),
 )
 
 
 async def to_code(config):
-    controller = await text_sensor.new_text_sensor(config)
     parent = await cg.get_variable(config[CONF_SPANET_ID])
-    cg.add(parent.set_model_sensor(controller))
+
+    if CONF_CONTROLLER_MODEL in config:
+        model = await text_sensor.new_text_sensor(config[CONF_CONTROLLER_MODEL])
+        cg.add(parent.set_controller_model_sensor(model))
+
+    if CONF_CONTROLLER_SERIAL in config:
+        serial = await text_sensor.new_text_sensor(config[CONF_CONTROLLER_SERIAL])
+        cg.add(parent.set_controller_serial_sensor(serial))
+
+    if CONF_CONTROLLER_FW_VERSION in config:
+        fw_version = await text_sensor.new_text_sensor(config[CONF_CONTROLLER_FW_VERSION])
+        cg.add(parent.set_controller_fw_version_sensor(fw_version))

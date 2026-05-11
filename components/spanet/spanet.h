@@ -17,7 +17,11 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
  public:
   using StateUpdateCallback = std::function<void(const State &)>;
 
-  void set_model_sensor(text_sensor::TextSensor *sensor) { this->sen_model_ = sensor; }
+  void set_controller_model_sensor(text_sensor::TextSensor *sensor) { this->sen_controller_model_ = sensor; }
+  void set_controller_serial_sensor(text_sensor::TextSensor *sensor) { this->sen_controller_serial_ = sensor; }
+  void set_controller_fw_version_sensor(text_sensor::TextSensor *sensor) {
+    this->sen_controller_fw_version_ = sensor;
+  }
   void add_on_state_callback(StateUpdateCallback callback) { this->state_callbacks_.push_back(std::move(callback)); }
 
   void setup() override;
@@ -31,7 +35,9 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   void on_ack_message_(const std::string &message);
   void notify_state_update_(const State &state);
 
-  text_sensor::TextSensor *sen_model_{nullptr};
+  text_sensor::TextSensor *sen_controller_model_{nullptr};
+  text_sensor::TextSensor *sen_controller_serial_{nullptr};
+  text_sensor::TextSensor *sen_controller_fw_version_{nullptr};
   UartRxBuffer rx_buffer_{256};
   RegisterStore register_store_;
   std::vector<StateUpdateCallback> state_callbacks_;

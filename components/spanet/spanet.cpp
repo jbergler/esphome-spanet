@@ -11,9 +11,23 @@ void SpaNetComponent::setup() {
   this->check_uart_settings(38400);
 
   this->add_on_state_callback([this](const State &state) {
-    if (this->sen_model_ != nullptr && !state.controller_status.model.empty()) {
-      if (this->sen_model_->get_raw_state() != state.controller_status.model) {
-        this->sen_model_->publish_state(state.controller_status.model);
+    const auto &controller = state.controller_status;
+
+    if (this->sen_controller_model_ != nullptr && !state.controller_status.model.empty()) {
+      if (this->sen_controller_model_->get_raw_state() != controller.model) {
+        this->sen_controller_model_->publish_state(controller.model);
+      }
+    }
+
+    if (this->sen_controller_fw_version_ != nullptr && !controller.software_version.empty()) {
+      if (this->sen_controller_fw_version_->get_raw_state() != controller.software_version) {
+        this->sen_controller_fw_version_->publish_state(controller.software_version);
+      }
+    }
+
+    if (this->sen_controller_serial_ != nullptr && !controller.serial_number.empty()) {
+      if (this->sen_controller_serial_->get_raw_state() != controller.serial_number) {
+        this->sen_controller_serial_->publish_state(controller.serial_number);
       }
     }
   });
@@ -77,8 +91,14 @@ void SpaNetComponent::notify_state_update_(const State &state) {
 void SpaNetComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "SpaNET dummy component");
   LOG_UPDATE_INTERVAL(this);
-  if (this->sen_model_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Model: %s", this->sen_model_->get_name().c_str());
+  if (this->sen_controller_model_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Model: %s", this->sen_controller_model_->get_name().c_str());
+  }
+  if (this->sen_controller_serial_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Serial: %s", this->sen_controller_serial_->get_name().c_str());
+  }
+  if (this->sen_controller_fw_version_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Firmware Version: %s", this->sen_controller_fw_version_->get_name().c_str());
   }
 }
 
