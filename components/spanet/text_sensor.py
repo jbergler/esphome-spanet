@@ -1,6 +1,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import text_sensor
+from esphome.const import ENTITY_CATEGORY_DIAGNOSTIC
 
 from . import CONF_SPANET_ID, SpaNetComponent
 
@@ -10,13 +11,17 @@ CONF_CONTROLLER_MODEL = "controller_model"
 CONF_CONTROLLER_SERIAL = "controller_serial"
 CONF_CONTROLLER_FW_VERSION = "controller_fw_version"
 
+controller_text_sensor_schema = text_sensor.text_sensor_schema(
+    entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+)
+
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
             cv.GenerateID(CONF_SPANET_ID): cv.use_id(SpaNetComponent),
-            cv.Optional(CONF_CONTROLLER_MODEL): text_sensor.text_sensor_schema(),
-            cv.Optional(CONF_CONTROLLER_SERIAL): text_sensor.text_sensor_schema(),
-            cv.Optional(CONF_CONTROLLER_FW_VERSION): text_sensor.text_sensor_schema(),
+            cv.Optional(CONF_CONTROLLER_MODEL): controller_text_sensor_schema,
+            cv.Optional(CONF_CONTROLLER_SERIAL): controller_text_sensor_schema,
+            cv.Optional(CONF_CONTROLLER_FW_VERSION): controller_text_sensor_schema,
         }
     ),
     cv.has_at_least_one_key(CONF_CONTROLLER_MODEL, CONF_CONTROLLER_SERIAL, CONF_CONTROLLER_FW_VERSION),
