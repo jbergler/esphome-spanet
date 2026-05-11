@@ -1,0 +1,89 @@
+substitutions:
+  name: "espa-mini-v1"
+  friendly_name: "eSPA Mini v1"
+  project_name: "jbergler.esphome-spanet"
+  project_version: "0.1.0"
+
+  spa_uart_tx_pin: GPIO15
+  spa_uart_rx_pin: GPIO16
+  spa_uart_baud: "38400"
+
+  fallback_ap_password: "12345678"
+
+esphome:
+  name: "${name}"
+  friendly_name: "${friendly_name}"
+  name_add_mac_suffix: true
+  project:
+    name: "${project_name}"
+    version: "${project_version}"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+logger:
+
+api:
+
+ota:
+  - platform: esphome
+
+wifi:
+  # Intentionally leave station credentials unset for creator-style provisioning.
+  ap:
+    ssid: "${friendly_name} Fallback"
+    password: "${fallback_ap_password}"
+
+captive_portal:
+
+# USB provisioning path for first-time setup.
+improv_serial:
+  next_url: "https://my.home-assistant.io/redirect/onboarding/?device_name={{device_name}}&ip_address={{ip_address}}"
+
+web_server:
+  port: 80
+  version: 2
+  local: true
+  compression: gzip
+  include_internal: false
+
+# Replace with the final public URL when publishing creator firmware.
+dashboard_import:
+  package_import_url: github://jbergler/esphome-spanet/espa-mini-v1.yaml@main
+  import_full_config: true
+
+uart:
+  id: spa_uart
+  tx_pin: ${spa_uart_tx_pin}
+  rx_pin: ${spa_uart_rx_pin}
+  baud_rate: ${spa_uart_baud}
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+spanet:
+  id: spa_hub
+  uart_id: spa_uart
+  update_interval: 60s
+
+text_sensor:
+  - platform: spanet
+    spanet_id: spa_hub
+    controller_model:
+      name: "Controller Model"
+    controller_serial:
+      name: "Controller Serial"
+    controller_fw_version:
+      name: "Controller FW Version"
+
+sensor:
+  - platform: spanet
+    spanet_id: spa_hub
+    water_temperature:
+      name: "Water Temperature"
+    setpoint_temperature:
+      name: "Setpoint Temperature"
