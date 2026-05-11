@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <vector>
 
@@ -9,6 +10,7 @@
 
 #include "spanet_parser.h"
 #include "spanet_state.h"
+#include "update_debounce.h"
 #include "uart_rx_buffer.h"
 
 namespace esphome::spanet {
@@ -40,6 +42,7 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   text_sensor::TextSensor *sen_controller_fw_version_{nullptr};
   UartRxBuffer rx_buffer_{256};
   RegisterStore register_store_;
+  UpdateDebounceGate state_update_debounce_{250};
   std::vector<StateUpdateCallback> state_callbacks_;
 };
 
