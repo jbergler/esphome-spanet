@@ -17,6 +17,7 @@ void SpaNetComponent::setup() {
   this->add_on_state_callback([this](const State &state) {
     const auto &controller = state.controller_status;
     const auto &temperatures = state.temperatures;
+    const auto &power = state.power;
 
     if (this->sen_controller_model_ != nullptr && !state.controller_status.model.empty()) {
       if (this->sen_controller_model_->get_raw_state() != controller.model) {
@@ -47,6 +48,48 @@ void SpaNetComponent::setup() {
       const float next_value = temperatures.setpoint_c.value();
       if (std::isnan(this->sen_setpoint_temperature_->state) || this->sen_setpoint_temperature_->state != next_value) {
         this->sen_setpoint_temperature_->publish_state(next_value);
+      }
+    }
+
+    if (this->sen_heater_temperature_ != nullptr && temperatures.heater_c.has_value()) {
+      const float next_value = temperatures.heater_c.value();
+      if (std::isnan(this->sen_heater_temperature_->state) || this->sen_heater_temperature_->state != next_value) {
+        this->sen_heater_temperature_->publish_state(next_value);
+      }
+    }
+
+    if (this->sen_case_temperature_ != nullptr && temperatures.case_c.has_value()) {
+      const float next_value = temperatures.case_c.value();
+      if (std::isnan(this->sen_case_temperature_->state) || this->sen_case_temperature_->state != next_value) {
+        this->sen_case_temperature_->publish_state(next_value);
+      }
+    }
+
+    if (this->sen_mains_voltage_ != nullptr && power.mains_voltage_v.has_value()) {
+      const float next_value = power.mains_voltage_v.value();
+      if (std::isnan(this->sen_mains_voltage_->state) || this->sen_mains_voltage_->state != next_value) {
+        this->sen_mains_voltage_->publish_state(next_value);
+      }
+    }
+
+    if (this->sen_mains_current_ != nullptr && power.mains_current_a.has_value()) {
+      const float next_value = power.mains_current_a.value();
+      if (std::isnan(this->sen_mains_current_->state) || this->sen_mains_current_->state != next_value) {
+        this->sen_mains_current_->publish_state(next_value);
+      }
+    }
+
+    if (this->sen_instant_power_ != nullptr && power.instant_power_w.has_value()) {
+      const float next_value = power.instant_power_w.value();
+      if (std::isnan(this->sen_instant_power_->state) || this->sen_instant_power_->state != next_value) {
+        this->sen_instant_power_->publish_state(next_value);
+      }
+    }
+
+    if (this->sen_total_energy_ != nullptr && power.total_energy_kwh.has_value()) {
+      const float next_value = power.total_energy_kwh.value();
+      if (std::isnan(this->sen_total_energy_->state) || this->sen_total_energy_->state != next_value) {
+        this->sen_total_energy_->publish_state(next_value);
       }
     }
   });
@@ -135,6 +178,24 @@ void SpaNetComponent::dump_config() {
   }
   if (this->sen_setpoint_temperature_ != nullptr) {
     ESP_LOGCONFIG(TAG, "  Setpoint Temperature: %s", this->sen_setpoint_temperature_->get_name().c_str());
+  }
+  if (this->sen_heater_temperature_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Heater Temperature: %s", this->sen_heater_temperature_->get_name().c_str());
+  }
+  if (this->sen_case_temperature_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Case Temperature: %s", this->sen_case_temperature_->get_name().c_str());
+  }
+  if (this->sen_mains_voltage_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Mains Voltage: %s", this->sen_mains_voltage_->get_name().c_str());
+  }
+  if (this->sen_mains_current_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Mains Current: %s", this->sen_mains_current_->get_name().c_str());
+  }
+  if (this->sen_instant_power_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Instant Power: %s", this->sen_instant_power_->get_name().c_str());
+  }
+  if (this->sen_total_energy_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Total Energy: %s", this->sen_total_energy_->get_name().c_str());
   }
 }
 

@@ -143,6 +143,32 @@ TEST(RegisterStoreTest, ParsesWaterAndSetpointTemperaturesFromR5AndR6) {
   EXPECT_NEAR(state.temperatures.setpoint_c.value(), 39.0f, 0.01f);
 }
 
+TEST(RegisterStoreTest, ParsesR2TelemetryWithExpectedScaling) {
+  RegisterStore store;
+  put_line(store, ",R2,77,240,245,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.power.mains_current_a.has_value());
+  ASSERT_TRUE(state.power.mains_voltage_v.has_value());
+  ASSERT_TRUE(state.temperatures.case_c.has_value());
+  ASSERT_TRUE(state.temperatures.heater_c.has_value());
+  EXPECT_NEAR(state.power.mains_current_a.value(), 7.7f, 0.01f);
+  EXPECT_NEAR(state.power.mains_voltage_v.value(), 240.0f, 0.01f);
+  EXPECT_NEAR(state.temperatures.case_c.value(), 24.5f, 0.01f);
+  EXPECT_NEAR(state.temperatures.heater_c.value(), 38.5f, 0.01f);
+}
+
+TEST(RegisterStoreTest, ParsesR4PowerTelemetryWithExpectedScaling) {
+  RegisterStore store;
+  put_line(store, ",R4,NORM,0,0,0,2,0,254,4,20,24350,12345,0,0,0,0,0,0,262144,3,0,101,0,2022,6,80,50,0,0,5,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.power.instant_power_w.has_value());
+  ASSERT_TRUE(state.power.total_energy_kwh.has_value());
+  EXPECT_NEAR(state.power.instant_power_w.value(), 2435.0f, 0.01f);
+  EXPECT_NEAR(state.power.total_energy_kwh.value(), 123.45f, 0.01f);
+}
+
 TEST(ControllerStatusIntegrationTest, ParsesFullExamplePayloadFromFile) {
   std::ifstream file("tests/data/example-1.txt");
   ASSERT_TRUE(file.is_open()) << "Could not open tests/data/example-1.txt";

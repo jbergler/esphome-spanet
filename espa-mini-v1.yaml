@@ -87,3 +87,15 @@ sensor:
       name: "Water Temperature"
     setpoint_temperature:
       name: "Setpoint Temperature"
+    heater_temperature:
+      name: "Heater Temperature"
+    case_temperature:
+      name: "Case Temperature"
+    mains_voltage:
+      name: "Mains Voltage"
+    mains_current:
+      name: "Mains Current"
+    instant_power:
+      name: "Instant Power"
+    total_energy:
+      name: "Total Energy"

@@ -41,3 +41,15 @@ sensor:
       name: "SpaNET Water Temperature"
     setpoint_temperature:
       name: "SpaNET Setpoint Temperature"
+    heater_temperature:
+      name: "SpaNET Heater Temperature"
+    case_temperature:
+      name: "SpaNET Case Temperature"
+    mains_voltage:
+      name: "SpaNET Mains Voltage"
+    mains_current:
+      name: "SpaNET Mains Current"
+    instant_power:
+      name: "SpaNET Instant Power"
+    total_energy:
+      name: "SpaNET Total Energy"

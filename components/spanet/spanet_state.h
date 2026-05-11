@@ -19,11 +19,21 @@ struct ControllerStatus {
 struct TemperatureStatus {
   std::optional<float> water_c;
   std::optional<float> setpoint_c;
+  std::optional<float> heater_c;
+  std::optional<float> case_c;
+};
+
+struct PowerStatus {
+  std::optional<float> mains_voltage_v;
+  std::optional<float> mains_current_a;
+  std::optional<float> instant_power_w;
+  std::optional<float> total_energy_kwh;
 };
 
 struct State {
   ControllerStatus controller_status;
   TemperatureStatus temperatures;
+  PowerStatus power;
 };
 
 struct Registers {

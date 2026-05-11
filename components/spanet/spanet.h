@@ -27,6 +27,12 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   }
   void set_water_temperature_sensor(sensor::Sensor *sensor) { this->sen_water_temperature_ = sensor; }
   void set_setpoint_temperature_sensor(sensor::Sensor *sensor) { this->sen_setpoint_temperature_ = sensor; }
+  void set_heater_temperature_sensor(sensor::Sensor *sensor) { this->sen_heater_temperature_ = sensor; }
+  void set_case_temperature_sensor(sensor::Sensor *sensor) { this->sen_case_temperature_ = sensor; }
+  void set_mains_voltage_sensor(sensor::Sensor *sensor) { this->sen_mains_voltage_ = sensor; }
+  void set_mains_current_sensor(sensor::Sensor *sensor) { this->sen_mains_current_ = sensor; }
+  void set_instant_power_sensor(sensor::Sensor *sensor) { this->sen_instant_power_ = sensor; }
+  void set_total_energy_sensor(sensor::Sensor *sensor) { this->sen_total_energy_ = sensor; }
   void add_on_state_callback(StateUpdateCallback callback) { this->state_callbacks_.push_back(std::move(callback)); }
 
   void setup() override;
@@ -45,6 +51,12 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   text_sensor::TextSensor *sen_controller_fw_version_{nullptr};
   sensor::Sensor *sen_water_temperature_{nullptr};
   sensor::Sensor *sen_setpoint_temperature_{nullptr};
+  sensor::Sensor *sen_heater_temperature_{nullptr};
+  sensor::Sensor *sen_case_temperature_{nullptr};
+  sensor::Sensor *sen_mains_voltage_{nullptr};
+  sensor::Sensor *sen_mains_current_{nullptr};
+  sensor::Sensor *sen_instant_power_{nullptr};
+  sensor::Sensor *sen_total_energy_{nullptr};
   UartRxBuffer rx_buffer_{256};
   RegisterStore register_store_;
   UpdateDebounceGate state_update_debounce_{250};
