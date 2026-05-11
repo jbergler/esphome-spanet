@@ -2,17 +2,15 @@ esphome:
   name: spanet-dummy
   friendly_name: SpaNET Dummy
 
-esp32:
-  board: esp32dev
-  framework:
-    type: esp-idf
+host:
+  mac_address: "06:35:69:ab:f6:79"
 
 logger:
+  level: VERBOSE
 
 uart:
   id: spa_uart
-  tx_pin: GPIO17
-  rx_pin: GPIO16
+  port: /dev/ttys003
   baud_rate: 38400
 
 external_components:
