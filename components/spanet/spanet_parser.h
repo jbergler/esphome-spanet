@@ -249,7 +249,6 @@ struct RegisterR5 {
 struct RegisterR6 {
   static constexpr const char *kLabel = "R6";
 
-  std::string clean_cycle;
   std::string vari_value;
   std::string brightness;
   std::string current_color;
@@ -277,6 +276,7 @@ struct RegisterR6 {
   std::string element;
   std::string type;
   std::string gas;
+  std::string unknown_28;
 
   static std::optional<RegisterR6> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 27) {
@@ -284,34 +284,34 @@ struct RegisterR6 {
     }
 
     RegisterR6 out;
-    out.clean_cycle = fields[0];
-    out.vari_value = fields[1];
-    out.brightness = fields[2];
-    out.current_color = fields[3];
-    out.color_mode = fields[4];
-    out.light_effect_speed = fields[5];
-    out.filt_set_hrs = fields[6];
-    out.filt_block_hrs = fields[7];
-    out.set_temperature = fields[8];
-    out.l_24hours = fields[9];
-    out.power_save_level = fields[10];
-    out.peak_power_begin = fields[11];
-    out.peak_power_end = fields[12];
-    out.sleep_timer_1_day = fields[13];
-    out.sleep_timer_2_day = fields[14];
-    out.sleep_timer_1_begin = fields[15];
-    out.sleep_timer_2_begin = fields[16];
-    out.sleep_timer_1_end = fields[17];
-    out.sleep_timer_2_end = fields[18];
-    out.default_screen = fields[19];
-    out.timeout = fields[20];
-    out.variable_pump = fields[21];
-    out.hifi = fields[22];
-    out.brand = fields[23];
-    out.prime = fields[24];
-    out.element = fields[25];
-    out.type = fields[26];
-    out.gas = fields[27];
+    out.vari_value = fields[0];
+    out.brightness = fields[1];
+    out.current_color = fields[2];
+    out.color_mode = fields[3];
+    out.light_effect_speed = fields[4];
+    out.filt_set_hrs = fields[5];
+    out.filt_block_hrs = fields[6];
+    out.set_temperature = fields[7];
+    out.l_24hours = fields[8];
+    out.power_save_level = fields[9];
+    out.peak_power_begin = fields[10];
+    out.peak_power_end = fields[11];
+    out.sleep_timer_1_day = fields[12];
+    out.sleep_timer_2_day = fields[13];
+    out.sleep_timer_1_begin = fields[14];
+    out.sleep_timer_2_begin = fields[15];
+    out.sleep_timer_1_end = fields[16];
+    out.sleep_timer_2_end = fields[17];
+    out.default_screen = fields[18];
+    out.timeout = fields[19];
+    out.variable_pump = fields[20];
+    out.hifi = fields[21];
+    out.brand = fields[22];
+    out.prime = fields[23];
+    out.element = fields[24];
+    out.type = fields[25];
+    out.gas = fields[26];
+    out.unknown_28 = fields[27];
     return out;
   }
 };
@@ -320,12 +320,15 @@ struct RegisterR7 {
   static constexpr const char *kLabel = "R7";
 
   std::string wcln_time;
-  std::string temperature_units;
   std::string ozone_off;
+  std::string temperature_units;
   std::string ozone_24hrs;
-  std::string circulation_24hrs;
   std::string cjet;
+  std::string circulation_24hrs;
   std::string vele;
+  std::string unknown_8;
+  std::string unknown_9;
+  std::string unknown_10;
   std::string v_max;
   std::string v_min;
   std::string v_max_24hrs;
@@ -333,6 +336,7 @@ struct RegisterR7 {
   std::string current_zero;
   std::string current_adjust;
   std::string voltage_adjust;
+  std::string unknown_18;
   std::string ser_1;
   std::string ser_2;
   std::string ser_3;
@@ -345,11 +349,7 @@ struct RegisterR7 {
   std::string pflt;
   std::string phtr;
   std::string pmax;
-  std::string unknown_26;
-  std::string unknown_27;
-  std::string unknown_28;
-  std::string unknown_29;
-  std::string unknown_30;
+  std::string unknown_31;
 
   static std::optional<RegisterR7> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 30) {
@@ -358,36 +358,36 @@ struct RegisterR7 {
 
     RegisterR7 out;
     out.wcln_time = fields[0];
-    out.temperature_units = fields[1];
-    out.ozone_off = fields[2];
+    out.ozone_off = fields[1];
+    out.temperature_units = fields[2];
     out.ozone_24hrs = fields[3];
-    out.circulation_24hrs = fields[4];
-    out.cjet = fields[5];
+    out.cjet = fields[4];
+    out.circulation_24hrs = fields[5];
     out.vele = fields[6];
-    out.v_max = fields[7];
-    out.v_min = fields[8];
-    out.v_max_24hrs = fields[9];
-    out.v_min_24hrs = fields[10];
-    out.current_zero = fields[11];
-    out.current_adjust = fields[12];
-    out.voltage_adjust = fields[13];
-    out.ser_1 = fields[14];
-    out.ser_2 = fields[15];
-    out.ser_3 = fields[16];
-    out.vmax = fields[17];
-    out.ahys = fields[18];
-    out.huse = fields[19];
-    out.hele = fields[20];
-    out.hpmp = fields[21];
-    out.pmin = fields[22];
-    out.pflt = fields[23];
-    out.phtr = fields[24];
-    out.pmax = fields[25];
-    out.unknown_26 = fields[26];
-    out.unknown_27 = fields[27];
-    out.unknown_28 = fields[28];
-    out.unknown_29 = fields[29];
-    out.unknown_30 = fields[30];
+    out.unknown_8 = fields[7];
+    out.unknown_9 = fields[8];
+    out.unknown_10 = fields[9];
+    out.v_max = fields[10];
+    out.v_min = fields[11];
+    out.v_max_24hrs = fields[12];
+    out.v_min_24hrs = fields[13];
+    out.current_zero = fields[14];
+    out.current_adjust = fields[15];
+    out.voltage_adjust = fields[16];
+    out.unknown_18 = fields[17];
+    out.ser_1 = fields[18];
+    out.ser_2 = fields[19];
+    out.ser_3 = fields[20];
+    out.vmax = fields[21];
+    out.ahys = fields[22];
+    out.huse = fields[23];
+    out.hele = fields[24];
+    out.hpmp = fields[25];
+    out.pmin = fields[26];
+    out.pflt = fields[27];
+    out.phtr = fields[28];
+    out.pmax = fields[29];
+    out.unknown_31 = fields[30];
     return out;
   }
 };
@@ -509,20 +509,20 @@ struct RegisterRB {
 struct RegisterRC {
   static constexpr const char *kLabel = "RC";
 
-  std::string outlet_0;
-  std::string outlet_1;
-  std::string outlet_2;
-  std::string outlet_3;
-  std::string outlet_4;
-  std::string outlet_5;
-  std::string outlet_6;
-  std::string outlet_7;
-  std::string outlet_8;
-  std::string outlet_9;
-  std::string outlet_10;
-  std::string outlet_11;
-  std::string outlet_12;
-  std::string outlet_13;
+  std::string unknown_1;
+  std::string unknown_2;
+  std::string unknown_3;
+  std::string unknown_4;
+  std::string unknown_5;
+  std::string unknown_6;
+  std::string unknown_7;
+  std::string unknown_8;
+  std::string unknown_9;
+  std::string outlet_blower;
+  std::string unknown_11;
+  std::string unknown_12;
+  std::string unknown_13;
+  std::string unknown_14;
 
   static std::optional<RegisterRC> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 13) {
@@ -530,20 +530,20 @@ struct RegisterRC {
     }
 
     RegisterRC out;
-    out.outlet_0 = fields[0];
-    out.outlet_1 = fields[1];
-    out.outlet_2 = fields[2];
-    out.outlet_3 = fields[3];
-    out.outlet_4 = fields[4];
-    out.outlet_5 = fields[5];
-    out.outlet_6 = fields[6];
-    out.outlet_7 = fields[7];
-    out.outlet_8 = fields[8];
-    out.outlet_9 = fields[9];
-    out.outlet_10 = fields[10];
-    out.outlet_11 = fields[11];
-    out.outlet_12 = fields[12];
-    out.outlet_13 = fields[13];
+    out.unknown_1 = fields[0];
+    out.unknown_2 = fields[1];
+    out.unknown_3 = fields[2];
+    out.unknown_4 = fields[3];
+    out.unknown_5 = fields[4];
+    out.unknown_6 = fields[5];
+    out.unknown_7 = fields[6];
+    out.unknown_8 = fields[7];
+    out.unknown_9 = fields[8];
+    out.outlet_blower = fields[9];
+    out.unknown_11 = fields[10];
+    out.unknown_12 = fields[11];
+    out.unknown_13 = fields[12];
+    out.unknown_14 = fields[13];
     return out;
   }
 };
@@ -551,36 +551,36 @@ struct RegisterRC {
 struct RegisterRE {
   static constexpr const char *kLabel = "RE";
 
-  std::string param_0;
-  std::string param_1;
-  std::string param_2;
-  std::string param_3;
-  std::string param_4;
-  std::string param_5;
-  std::string param_6;
-  std::string param_7;
-  std::string param_8;
-  std::string param_9;
-  std::string param_10;
-  std::string param_11;
-  std::string param_12;
-  std::string param_13;
-  std::string param_14;
-  std::string param_15;
-  std::string param_16;
-  std::string param_17;
-  std::string param_18;
-  std::string param_19;
-  std::string param_20;
-  std::string param_21;
-  std::string param_22;
-  std::string param_23;
-  std::string param_24;
-  std::string param_25;
-  std::string param_26;
-  std::string param_27;
-  std::string param_28;
-  std::string param_29;
+  std::string hp_present;
+  std::string unknown_2;
+  std::string unknown_3;
+  std::string unknown_4;
+  std::string unknown_5;
+  std::string unknown_6;
+  std::string unknown_7;
+  std::string unknown_8;
+  std::string unknown_9;
+  std::string hp_ambient;
+  std::string hp_condensor;
+  std::string hp_compressor_state;
+  std::string hp_fan_state;
+  std::string hp_4w_valve;
+  std::string hp_heater_state;
+  std::string hp_state;
+  std::string hp_mode;
+  std::string hp_defrost_timer;
+  std::string hp_comp_run_timer;
+  std::string hp_low_temp_timer;
+  std::string hp_heat_accum_timer;
+  std::string hp_sequence_timer;
+  std::string hp_warning;
+  std::string frez_tmr;
+  std::string dbgn;
+  std::string dend;
+  std::string dcmp;
+  std::string dmax;
+  std::string dele;
+  std::string dpmp;
 
   static std::optional<RegisterRE> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 29) {
@@ -588,36 +588,36 @@ struct RegisterRE {
     }
 
     RegisterRE out;
-    out.param_0 = fields[0];
-    out.param_1 = fields[1];
-    out.param_2 = fields[2];
-    out.param_3 = fields[3];
-    out.param_4 = fields[4];
-    out.param_5 = fields[5];
-    out.param_6 = fields[6];
-    out.param_7 = fields[7];
-    out.param_8 = fields[8];
-    out.param_9 = fields[9];
-    out.param_10 = fields[10];
-    out.param_11 = fields[11];
-    out.param_12 = fields[12];
-    out.param_13 = fields[13];
-    out.param_14 = fields[14];
-    out.param_15 = fields[15];
-    out.param_16 = fields[16];
-    out.param_17 = fields[17];
-    out.param_18 = fields[18];
-    out.param_19 = fields[19];
-    out.param_20 = fields[20];
-    out.param_21 = fields[21];
-    out.param_22 = fields[22];
-    out.param_23 = fields[23];
-    out.param_24 = fields[24];
-    out.param_25 = fields[25];
-    out.param_26 = fields[26];
-    out.param_27 = fields[27];
-    out.param_28 = fields[28];
-    out.param_29 = fields[29];
+    out.hp_present = fields[0];
+    out.unknown_2 = fields[1];
+    out.unknown_3 = fields[2];
+    out.unknown_4 = fields[3];
+    out.unknown_5 = fields[4];
+    out.unknown_6 = fields[5];
+    out.unknown_7 = fields[6];
+    out.unknown_8 = fields[7];
+    out.unknown_9 = fields[8];
+    out.hp_ambient = fields[9];
+    out.hp_condensor = fields[10];
+    out.hp_compressor_state = fields[11];
+    out.hp_fan_state = fields[12];
+    out.hp_4w_valve = fields[13];
+    out.hp_heater_state = fields[14];
+    out.hp_state = fields[15];
+    out.hp_mode = fields[16];
+    out.hp_defrost_timer = fields[17];
+    out.hp_comp_run_timer = fields[18];
+    out.hp_low_temp_timer = fields[19];
+    out.hp_heat_accum_timer = fields[20];
+    out.hp_sequence_timer = fields[21];
+    out.hp_warning = fields[22];
+    out.frez_tmr = fields[23];
+    out.dbgn = fields[24];
+    out.dend = fields[25];
+    out.dcmp = fields[26];
+    out.dmax = fields[27];
+    out.dele = fields[28];
+    out.dpmp = fields[29];
     return out;
   }
 };
@@ -625,20 +625,20 @@ struct RegisterRE {
 struct RegisterRG {
   static constexpr const char *kLabel = "RG";
 
-  std::string pump_1;
-  std::string pump_2;
-  std::string pump_3;
-  std::string pump_4;
-  std::string pump_5;
-  std::string pump_6;
-  std::string pump_7;
-  std::string pump_8;
-  std::string pump_9;
-  std::string pump_10;
-  std::string pump_11;
-  std::string pump_12;
-  std::string pump_13;
-  std::string pump_14;
+  std::string pump1_ok_to_run;
+  std::string pump2_ok_to_run;
+  std::string pump3_ok_to_run;
+  std::string pump4_ok_to_run;
+  std::string pump5_ok_to_run;
+  std::string unknown_6;
+  std::string pump1_install_state;
+  std::string pump2_install_state;
+  std::string pump3_install_state;
+  std::string pump4_install_state;
+  std::string pump5_install_state;
+  std::string lock_mode;
+  std::string unknown_13;
+  std::string unknown_14;
 
   static std::optional<RegisterRG> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() < 14) {
@@ -646,20 +646,20 @@ struct RegisterRG {
     }
 
     RegisterRG out;
-    out.pump_1 = fields[0];
-    out.pump_2 = fields[1];
-    out.pump_3 = fields[2];
-    out.pump_4 = fields[3];
-    out.pump_5 = fields[4];
-    out.pump_6 = fields[5];
-    out.pump_7 = fields[6];
-    out.pump_8 = fields[7];
-    out.pump_9 = fields[8];
-    out.pump_10 = fields[9];
-    out.pump_11 = fields[10];
-    out.pump_12 = fields[11];
-    out.pump_13 = fields[12];
-    out.pump_14 = fields[13];
+    out.pump1_ok_to_run = fields[0];
+    out.pump2_ok_to_run = fields[1];
+    out.pump3_ok_to_run = fields[2];
+    out.pump4_ok_to_run = fields[3];
+    out.pump5_ok_to_run = fields[4];
+    out.unknown_6 = fields[5];
+    out.pump1_install_state = fields[6];
+    out.pump2_install_state = fields[7];
+    out.pump3_install_state = fields[8];
+    out.pump4_install_state = fields[9];
+    out.pump5_install_state = fields[10];
+    out.lock_mode = fields[11];
+    out.unknown_13 = fields[12];
+    out.unknown_14 = fields[13];
     return out;
   }
 };

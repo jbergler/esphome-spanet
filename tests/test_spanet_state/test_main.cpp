@@ -131,6 +131,18 @@ TEST(RegisterStoreTest, ParsesR2DatetimeIntoCurrentTime) {
   EXPECT_GT(state.controller_status.current_time.value(), 946684800);
 }
 
+TEST(RegisterStoreTest, ParsesWaterAndSetpointTemperaturesFromR5AndR6) {
+  RegisterStore store;
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, ",R6,5,3,1,1,5,1,4,390,1,0,3584,5120,31,96,5632,5918,1792,1792,0,30,0,0,0,0,1,5,0,410,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.temperatures.water_c.has_value());
+  ASSERT_TRUE(state.temperatures.setpoint_c.has_value());
+  EXPECT_NEAR(state.temperatures.water_c.value(), 39.4f, 0.01f);
+  EXPECT_NEAR(state.temperatures.setpoint_c.value(), 39.0f, 0.01f);
+}
+
 TEST(ControllerStatusIntegrationTest, ParsesFullExamplePayloadFromFile) {
   std::ifstream file("tests/data/example-1.txt");
   ASSERT_TRUE(file.is_open()) << "Could not open tests/data/example-1.txt";
@@ -155,6 +167,10 @@ TEST(ControllerStatusIntegrationTest, ParsesFullExamplePayloadFromFile) {
   EXPECT_EQ(state.controller_status.serial_number, "21460001-20000999");
   ASSERT_TRUE(state.controller_status.current_time.has_value());
   EXPECT_EQ(state.controller_status.current_time.value(), 1778453196);
+  ASSERT_TRUE(state.temperatures.water_c.has_value());
+  ASSERT_TRUE(state.temperatures.setpoint_c.has_value());
+  EXPECT_NEAR(state.temperatures.water_c.value(), 39.4f, 0.01f);
+  EXPECT_NEAR(state.temperatures.setpoint_c.value(), 39.0f, 0.01f);
 }
 
 TEST(ControllerStatusIntegrationTest, CurrentTimeEmptyWhenOnlyR3Received) {

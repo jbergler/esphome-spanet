@@ -48,7 +48,7 @@ TEST(ParseRegisterLineTest, ParsesRgWithExactlyFourteenFields) {
   ASSERT_TRUE(std::holds_alternative<RegisterRG>(result.value()));
 
   const auto &rg = std::get<RegisterRG>(result.value());
-  EXPECT_EQ(rg.pump_14, "14");
+  EXPECT_EQ(rg.unknown_14, "14");
 }
 
 TEST(ParseRegisterLineTest, ParsesStandaloneRegisterLine) {
