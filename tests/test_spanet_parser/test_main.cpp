@@ -171,6 +171,18 @@ TEST(RegisterStoreTest, HandlesCompleteRealRfPayload) {
   ASSERT_TRUE(regs.rg.has_value());
 }
 
+TEST(RegisterStoreTest, ParsesR2DatetimeIntoControllerEpoch) {
+  RegisterStore store;
+  // R2 with datetime: 06:07:08 on 2026-12-13
+  put_line(store, ",R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.controller_status.current_time.has_value());
+  // 2026-05-11 10:46:36 should parse to a valid Unix timestamp
+  // Verify it's a reasonable value (after year 2000)
+  EXPECT_GT(state.controller_status.current_time.value(), 946684800);  // 2000-01-01
+}
+
 }  // namespace esphome::spanet::tests
 
 int main(int argc, char **argv) {
