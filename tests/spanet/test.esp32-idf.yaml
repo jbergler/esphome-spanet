@@ -1,0 +1,27 @@
+esphome:
+  name: spanet-dummy
+  friendly_name: SpaNET Dummy
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+
+uart:
+  id: spa_uart
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+  baud_rate: 38400
+
+external_components:
+  - source:
+      type: local
+      path: ../../components
+
+text_sensor:
+  - platform: spanet
+    uart_id: spa_uart
+    controller:
+      name: "SpaNET Controller Model"
