@@ -711,14 +711,13 @@ class SpaNetParser {
     return MessageType::kUnknown;
   }
 
-  // Parses one kStateUpdate UART line into a (register_label, fields) pair.
+  // Parses one kStateUpdate UART line into a typed AnyRegisterLine.
   // Returns nullopt if the line does not contain a recognisable register pattern.
   //
   // Handles both line shapes present in real SpaNET RF responses:
-  //   RF start line:   "RF:,R2:1,2,3"  → ("R2", ["1","2","3"])
-  //   Continuation:    "R3:10,20,30"   → ("R3", ["10","20","30"])
-  static std::optional<std::pair<std::string, std::vector<std::string>>> parse_register_line(
-      const std::string &line) {
+  //   RF start line:   "RF:,R2:1,2,3"  → RegisterR2 variant
+  //   Continuation:    "R3:10,20,30"   → RegisterR3 variant
+  static std::optional<AnyRegisterLine> parse_register_line(const std::string &line) {
     auto content = trim_(line);
 
     // Strip "RF:" prefix (but keep leading comma from the first response line)
@@ -758,7 +757,7 @@ class SpaNetParser {
 
       // Remove the label and keep only the data fields
       all_fields.erase(all_fields.begin());
-      return std::make_pair(label, std::move(all_fields));
+      return decode_register_line_(label, std::move(all_fields));
     }
 
     // Legacy format: {LABEL}:{fields}
@@ -773,10 +772,64 @@ class SpaNetParser {
     }
 
     auto fields = split_by_comma_(content.substr(colon_pos + 1));
-    return std::make_pair(label, std::move(fields));
+    return decode_register_line_(label, std::move(fields));
   }
 
  private:
+  static AnyRegisterLine decode_register_line_(const std::string &label,
+                                               const std::vector<std::string> &fields) {
+    if (label == "R2") {
+      if (auto reg = RegisterR2::from_fields(fields)) {
+        return reg.value();
+      }
+    } else if (label == "R3") {
+      if (auto reg = RegisterR3::from_fields(fields)) {
+        return reg.value();
+      }
+    } else if (label == "R4") {
+      if (auto reg = RegisterR4::from_fields(fields)) {
+        return reg.value();
+      }
+    } else if (label == "R5") {
+      if (auto reg = RegisterR5::from_fields(fields)) {
+        return reg.value();
+      }
+    } else if (label == "R6") {
+      if (auto reg = RegisterR6::from_fields(fields)) {
+        return reg.value();
+      }
+    } else if (label == "R7") {
+      if (auto reg = RegisterR7::from_fields(fields)) {
+        return reg.value();
+      }
+    } else if (label == "R9") {
+      if (auto reg = RegisterR9::from_fields(fields)) {
+        return reg.value();
+      }
+    } else if (label == "RA") {
+      if (auto reg = RegisterRA::from_fields(fields)) {
+        return reg.value();
+      }
+    } else if (label == "RB") {
+      if (auto reg = RegisterRB::from_fields(fields)) {
+        return reg.value();
+      }
+    } else if (label == "RC") {
+      if (auto reg = RegisterRC::from_fields(fields)) {
+        return reg.value();
+      }
+    } else if (label == "RE") {
+      if (auto reg = RegisterRE::from_fields(fields)) {
+        return reg.value();
+      }
+    } else if (label == "RG") {
+      if (auto reg = RegisterRG::from_fields(fields)) {
+        return reg.value();
+      }
+    }
+    return UnknownRegisterLine{label, fields};
+  }
+
   static std::string trim_(std::string value) {
     while (!value.empty() && std::isspace(static_cast<unsigned char>(value.front()))) {
       value.erase(value.begin());

@@ -28,8 +28,7 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
 
   text_sensor::TextSensor *controller_sensor_{nullptr};
   UartRxBuffer rx_buffer_{256};
-  RfRegisterStore register_store_;
-  SpaNetState state_;
+  RegisterStore register_store_;
   bool state_dirty_{false};
   uint32_t last_rx_data_ms_{0};
 };

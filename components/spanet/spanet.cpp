@@ -55,13 +55,7 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
 }
 
 void SpaNetComponent::on_state_update_message_(const std::string &message) {
-  auto parsed = SpaNetParser::parse_register_line(message);
-  if (!parsed.has_value()) {
-    ESP_LOGD(TAG, "State update line had no register payload; skipping");
-    return;
-  }
-
-  if (!this->register_store_.update_fields(parsed->first, parsed->second)) {
+  if (!this->register_store_.update(message)) {
     ESP_LOGW(TAG, "Failed to update register store for SpaNET state payload");
     return;
   }
@@ -76,8 +70,9 @@ void SpaNetComponent::on_ack_message_(const std::string &message) {
 }
 
 void SpaNetComponent::update() {
-  if (this->controller_sensor_ != nullptr && !this->state_.controller.empty()) {
-    this->controller_sensor_->publish_state(this->state_.controller.model);
+  const auto &state = this->register_store_.get_state();
+  if (this->controller_sensor_ != nullptr && !state.controller_status.model.empty()) {
+    this->controller_sensor_->publish_state(state.controller_status.model);
   }
 }
 
@@ -90,13 +85,8 @@ bool SpaNetComponent::should_recompute_state_() const {
 }
 
 void SpaNetComponent::recompute_state_() {
-  if (!this->state_.recompute_from(this->register_store_)) {
-    ESP_LOGW(TAG, "Failed to recompute SpaNetState from register store");
-    return;
-  }
-
   this->state_dirty_ = false;
-  ESP_LOGD(TAG, "Recomputed SpaNetState");
+  ESP_LOGD(TAG, "State updated from register store");
 }
 
 void SpaNetComponent::dump_config() {
