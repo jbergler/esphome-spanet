@@ -27,7 +27,7 @@ spanet:
 text_sensor:
   - platform: spanet
     spanet_id: spa_hub
-    model:
+    controller_model:
       name: "SpaNET Controller Model"
     controller_serial:
       name: "SpaNET Controller Serial"
