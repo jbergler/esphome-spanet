@@ -9,8 +9,6 @@
 #include <variant>
 #include <vector>
 
-#include "spanet_state.h"
-
 namespace esphome::spanet {
 
 enum class MessageType {
@@ -692,6 +690,15 @@ class SpaNetParser {
       return MessageType::kStateUpdate;
     }
 
+    // Real controller format: ,{LABEL},{fields},: — label is the token between
+    // the first and second comma.
+    if (!trimmed.empty() && trimmed[0] == ',') {
+      auto second_comma = trimmed.find(',', 1);
+      if (second_comma != std::string::npos && is_register_label_(trimmed.substr(1, second_comma - 1))) {
+        return MessageType::kStateUpdate;
+      }
+    }
+
     auto colon_pos = trimmed.find(':');
     if (colon_pos != std::string::npos && is_register_label_(trimmed.substr(0, colon_pos))) {
       return MessageType::kStateUpdate;
@@ -813,196 +820,6 @@ class SpaNetParser {
     fields.push_back(trim_(current));
     return fields;
   }
-};
-
-// RfRegisterStore accumulates the latest known fields for each register label,
-// updated one UART line at a time. It never resets: each call to update()
-// overwrites only the entry for the register found on that line, leaving all
-// other registers untouched.
-//
-// This makes the store resilient to partial or interrupted RF responses.
-// If only R3 has been received, controller identity is already accessible
-// even though R2, R4, and the rest have not yet arrived.
-//
-// Extending the store for new typed accessors:
-//   1. Add fields to ControllerIdentity or SpaNetState for the new data.
-//   2. Add a new accessor method (e.g. water_temperature()) that reads from
-//      registers_ using the appropriate label and field mappings.
-//   3. Cover the accessor with a focused unit test before wiring it in.
-//   4. Do not add parsing logic here — parsing belongs in SpaNetParser.
-class RfRegisterStore {
- public:
-  // Feed one kStateUpdate UART line. The register entry for the label found on
-  // this line is replaced atomically with the new field list. Returns true if a
-  // valid register was parsed and stored.
-  bool update(const std::string &line) {
-    auto parsed = SpaNetParser::parse_register_line(line);
-    if (!parsed.has_value()) {
-      return false;
-    }
-
-    registers_[parsed->first] = std::move(parsed->second);
-    return true;
-  }
-
-  // Returns typed controller identity extracted from the latest R3 data.
-  // Returns nullopt if R3 has not been received yet, or does not have enough
-  // fields for the given layout.
-  std::optional<ControllerIdentity> controller_identity() const {
-    auto register_line = this->typed_register(RegisterR3::kLabel);
-    if (!register_line.has_value()) {
-      return std::nullopt;
-    }
-
-    const auto &typed = register_line.value();
-    if (!std::holds_alternative<RegisterR3>(typed)) {
-      return std::nullopt;
-    }
-
-    const auto &r3 = std::get<RegisterR3>(typed);
-    ControllerIdentity identity;
-    identity.software_version = r3.software_version;
-    identity.model = r3.model;
-    identity.serial_number_1 = r3.serial_number_1;
-    identity.serial_number_2 = r3.serial_number_2;
-    return identity;
-  }
-
-  // Returns one decoded register line as a typed variant.
-  std::optional<AnyRegisterLine> typed_register(const std::string &label) const {
-    auto it = registers_.find(label);
-    if (it == registers_.end()) {
-      return std::nullopt;
-    }
-
-    return decode_register_(label, it->second);
-  }
-
-  // Visits all currently stored register lines with typed decoding.
-  void for_each_typed_register(const std::function<void(const AnyRegisterLine &)> &visitor) const {
-    for (const auto &[label, fields] : registers_) {
-      auto decoded = decode_register_(label, fields);
-      if (decoded.has_value()) {
-        visitor(decoded.value());
-      }
-    }
-  }
-
- private:
-  static std::optional<AnyRegisterLine> decode_register_(const std::string &label,
-                                                         const std::vector<std::string> &fields) {
-    using Decoder = std::optional<AnyRegisterLine> (*)(const std::vector<std::string> &);
-
-    static const std::map<std::string, Decoder> decoders = {
-        {RegisterR2::kLabel,
-         [](const std::vector<std::string> &raw) -> std::optional<AnyRegisterLine> {
-           auto parsed = RegisterR2::from_fields(raw);
-           if (!parsed.has_value()) {
-             return std::nullopt;
-           }
-           return AnyRegisterLine{std::move(parsed.value())};
-         }},
-        {RegisterR3::kLabel,
-         [](const std::vector<std::string> &raw) -> std::optional<AnyRegisterLine> {
-           auto parsed = RegisterR3::from_fields(raw);
-           if (!parsed.has_value()) {
-             return std::nullopt;
-           }
-           return AnyRegisterLine{std::move(parsed.value())};
-         }},
-        {RegisterR4::kLabel,
-         [](const std::vector<std::string> &raw) -> std::optional<AnyRegisterLine> {
-           auto parsed = RegisterR4::from_fields(raw);
-           if (!parsed.has_value()) {
-             return std::nullopt;
-           }
-           return AnyRegisterLine{std::move(parsed.value())};
-         }},
-        {RegisterR5::kLabel,
-         [](const std::vector<std::string> &raw) -> std::optional<AnyRegisterLine> {
-           auto parsed = RegisterR5::from_fields(raw);
-           if (!parsed.has_value()) {
-             return std::nullopt;
-           }
-           return AnyRegisterLine{std::move(parsed.value())};
-         }},
-        {RegisterR6::kLabel,
-         [](const std::vector<std::string> &raw) -> std::optional<AnyRegisterLine> {
-           auto parsed = RegisterR6::from_fields(raw);
-           if (!parsed.has_value()) {
-             return std::nullopt;
-           }
-           return AnyRegisterLine{std::move(parsed.value())};
-         }},
-        {RegisterR7::kLabel,
-         [](const std::vector<std::string> &raw) -> std::optional<AnyRegisterLine> {
-           auto parsed = RegisterR7::from_fields(raw);
-           if (!parsed.has_value()) {
-             return std::nullopt;
-           }
-           return AnyRegisterLine{std::move(parsed.value())};
-         }},
-        {RegisterR9::kLabel,
-         [](const std::vector<std::string> &raw) -> std::optional<AnyRegisterLine> {
-           auto parsed = RegisterR9::from_fields(raw);
-           if (!parsed.has_value()) {
-             return std::nullopt;
-           }
-           return AnyRegisterLine{std::move(parsed.value())};
-         }},
-        {RegisterRA::kLabel,
-         [](const std::vector<std::string> &raw) -> std::optional<AnyRegisterLine> {
-           auto parsed = RegisterRA::from_fields(raw);
-           if (!parsed.has_value()) {
-             return std::nullopt;
-           }
-           return AnyRegisterLine{std::move(parsed.value())};
-         }},
-        {RegisterRB::kLabel,
-         [](const std::vector<std::string> &raw) -> std::optional<AnyRegisterLine> {
-           auto parsed = RegisterRB::from_fields(raw);
-           if (!parsed.has_value()) {
-             return std::nullopt;
-           }
-           return AnyRegisterLine{std::move(parsed.value())};
-         }},
-        {RegisterRC::kLabel,
-         [](const std::vector<std::string> &raw) -> std::optional<AnyRegisterLine> {
-           auto parsed = RegisterRC::from_fields(raw);
-           if (!parsed.has_value()) {
-             return std::nullopt;
-           }
-           return AnyRegisterLine{std::move(parsed.value())};
-         }},
-        {RegisterRE::kLabel,
-         [](const std::vector<std::string> &raw) -> std::optional<AnyRegisterLine> {
-           auto parsed = RegisterRE::from_fields(raw);
-           if (!parsed.has_value()) {
-             return std::nullopt;
-           }
-           return AnyRegisterLine{std::move(parsed.value())};
-         }},
-        {RegisterRG::kLabel,
-         [](const std::vector<std::string> &raw) -> std::optional<AnyRegisterLine> {
-           auto parsed = RegisterRG::from_fields(raw);
-           if (!parsed.has_value()) {
-             return std::nullopt;
-           }
-           return AnyRegisterLine{std::move(parsed.value())};
-         }},
-    };
-
-    auto decoder = decoders.find(label);
-    if (decoder == decoders.end()) {
-      return AnyRegisterLine{UnknownRegisterLine{label, fields}};
-    }
-
-    return decoder->second(fields);
-  }
-
-  // Latest parsed fields per register label. Entries persist until overwritten
-  // by a later line carrying the same label.
-  std::map<std::string, std::vector<std::string>> registers_;
 };
 
 }  // namespace esphome::spanet

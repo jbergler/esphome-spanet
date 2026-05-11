@@ -34,6 +34,8 @@ class UartRxBuffer {
 
   void clear() { buffer_.clear(); }
 
+  bool empty() const { return buffer_.empty(); }
+
  private:
   std::string buffer_;
   size_t max_len_;

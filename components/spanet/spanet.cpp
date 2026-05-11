@@ -1,5 +1,6 @@
 #include "spanet.h"
 #include "esphome/core/log.h"
+#include "esphome/core/hal.h"
 
 namespace esphome::spanet {
 
@@ -11,16 +12,29 @@ void SpaNetComponent::setup() {
 }
 
 void SpaNetComponent::loop() {
+  bool saw_new_data = false;
+
   while (this->available() > 0) {
     uint8_t byte;
     if (!this->read_byte(&byte)) {
       break;
     }
 
+    saw_new_data = true;
+    this->last_rx_data_ms_ = millis();
+
     auto maybe_message = this->rx_buffer_.feed(byte);
     if (maybe_message.has_value()) {
       this->on_uart_message_(maybe_message.value());
     }
+  }
+
+  if (saw_new_data) {
+    this->state_dirty_ = true;
+  }
+
+  if (this->state_dirty_ && this->should_recompute_state_()) {
+    this->recompute_state_();
   }
 }
 
@@ -41,10 +55,18 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
 }
 
 void SpaNetComponent::on_state_update_message_(const std::string &message) {
-  if (!this->register_store_.update(message)) {
-    ESP_LOGW(TAG, "Failed to parse SpaNET state update payload");
+  auto parsed = SpaNetParser::parse_register_line(message);
+  if (!parsed.has_value()) {
+    ESP_LOGD(TAG, "State update line had no register payload; skipping");
     return;
   }
+
+  if (!this->register_store_.update_fields(parsed->first, parsed->second)) {
+    ESP_LOGW(TAG, "Failed to update register store for SpaNET state payload");
+    return;
+  }
+
+  this->state_dirty_ = true;
   ESP_LOGD(TAG, "Updated register store");
 }
 
@@ -54,10 +76,27 @@ void SpaNetComponent::on_ack_message_(const std::string &message) {
 }
 
 void SpaNetComponent::update() {
-  auto identity = this->register_store_.controller_identity();
-  if (this->controller_sensor_ != nullptr && identity.has_value()) {
-    this->controller_sensor_->publish_state(identity->model);
+  if (this->controller_sensor_ != nullptr && !this->state_.controller.empty()) {
+    this->controller_sensor_->publish_state(this->state_.controller.model);
   }
+}
+
+bool SpaNetComponent::should_recompute_state_() const {
+  if (this->rx_buffer_.empty()) {
+    return true;
+  }
+
+  return millis() - this->last_rx_data_ms_ >= 100;
+}
+
+void SpaNetComponent::recompute_state_() {
+  if (!this->state_.recompute_from(this->register_store_)) {
+    ESP_LOGW(TAG, "Failed to recompute SpaNetState from register store");
+    return;
+  }
+
+  this->state_dirty_ = false;
+  ESP_LOGD(TAG, "Recomputed SpaNetState");
 }
 
 void SpaNetComponent::dump_config() {
