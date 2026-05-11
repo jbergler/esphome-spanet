@@ -35,6 +35,13 @@ temperature_sensor_schema = sensor.sensor_schema(
     accuracy_decimals=1,
     device_class=DEVICE_CLASS_TEMPERATURE,
     state_class=STATE_CLASS_MEASUREMENT,
+)
+
+diag_temperature_sensor_schema = sensor.sensor_schema(
+    unit_of_measurement=UNIT_CELSIUS,
+    accuracy_decimals=1,
+    device_class=DEVICE_CLASS_TEMPERATURE,
+    state_class=STATE_CLASS_MEASUREMENT,
     entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
 )
 
@@ -76,8 +83,8 @@ CONFIG_SCHEMA = cv.All(
             cv.GenerateID(CONF_SPANET_ID): cv.use_id(SpaNetComponent),
             cv.Optional(CONF_WATER_TEMPERATURE): temperature_sensor_schema,
             cv.Optional(CONF_SETPOINT_TEMPERATURE): temperature_sensor_schema,
-            cv.Optional(CONF_HEATER_TEMPERATURE): temperature_sensor_schema,
-            cv.Optional(CONF_CASE_TEMPERATURE): temperature_sensor_schema,
+            cv.Optional(CONF_HEATER_TEMPERATURE): diag_temperature_sensor_schema,
+            cv.Optional(CONF_CASE_TEMPERATURE): diag_temperature_sensor_schema,
             cv.Optional(CONF_MAINS_VOLTAGE): voltage_sensor_schema,
             cv.Optional(CONF_MAINS_CURRENT): current_sensor_schema,
             cv.Optional(CONF_INSTANT_POWER): power_sensor_schema,
