@@ -33,3 +33,11 @@ text_sensor:
       name: "SpaNET Controller Serial"
     controller_fw_version:
       name: "SpaNET Controller FW Version"
+
+sensor:
+  - platform: spanet
+    spanet_id: spa_hub
+    water_temperature:
+      name: "SpaNET Water Temperature"
+    setpoint_temperature:
+      name: "SpaNET Setpoint Temperature"

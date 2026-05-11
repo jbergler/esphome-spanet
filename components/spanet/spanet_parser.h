@@ -249,7 +249,6 @@ struct RegisterR5 {
 struct RegisterR6 {
   static constexpr const char *kLabel = "R6";
 
-  std::string clean_cycle;
   std::string vari_value;
   std::string brightness;
   std::string current_color;
@@ -277,6 +276,7 @@ struct RegisterR6 {
   std::string element;
   std::string type;
   std::string gas;
+  std::string unknown_28;
 
   static std::optional<RegisterR6> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 27) {
@@ -284,34 +284,34 @@ struct RegisterR6 {
     }
 
     RegisterR6 out;
-    out.clean_cycle = fields[0];
-    out.vari_value = fields[1];
-    out.brightness = fields[2];
-    out.current_color = fields[3];
-    out.color_mode = fields[4];
-    out.light_effect_speed = fields[5];
-    out.filt_set_hrs = fields[6];
-    out.filt_block_hrs = fields[7];
-    out.set_temperature = fields[8];
-    out.l_24hours = fields[9];
-    out.power_save_level = fields[10];
-    out.peak_power_begin = fields[11];
-    out.peak_power_end = fields[12];
-    out.sleep_timer_1_day = fields[13];
-    out.sleep_timer_2_day = fields[14];
-    out.sleep_timer_1_begin = fields[15];
-    out.sleep_timer_2_begin = fields[16];
-    out.sleep_timer_1_end = fields[17];
-    out.sleep_timer_2_end = fields[18];
-    out.default_screen = fields[19];
-    out.timeout = fields[20];
-    out.variable_pump = fields[21];
-    out.hifi = fields[22];
-    out.brand = fields[23];
-    out.prime = fields[24];
-    out.element = fields[25];
-    out.type = fields[26];
-    out.gas = fields[27];
+    out.vari_value = fields[0];
+    out.brightness = fields[1];
+    out.current_color = fields[2];
+    out.color_mode = fields[3];
+    out.light_effect_speed = fields[4];
+    out.filt_set_hrs = fields[5];
+    out.filt_block_hrs = fields[6];
+    out.set_temperature = fields[7];
+    out.l_24hours = fields[8];
+    out.power_save_level = fields[9];
+    out.peak_power_begin = fields[10];
+    out.peak_power_end = fields[11];
+    out.sleep_timer_1_day = fields[12];
+    out.sleep_timer_2_day = fields[13];
+    out.sleep_timer_1_begin = fields[14];
+    out.sleep_timer_2_begin = fields[15];
+    out.sleep_timer_1_end = fields[16];
+    out.sleep_timer_2_end = fields[17];
+    out.default_screen = fields[18];
+    out.timeout = fields[19];
+    out.variable_pump = fields[20];
+    out.hifi = fields[21];
+    out.brand = fields[22];
+    out.prime = fields[23];
+    out.element = fields[24];
+    out.type = fields[25];
+    out.gas = fields[26];
+    out.unknown_28 = fields[27];
     return out;
   }
 };

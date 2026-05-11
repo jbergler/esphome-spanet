@@ -2,10 +2,13 @@
 #include "esphome/core/log.h"
 #include "esphome/core/hal.h"
 
+#include <cmath>
+
 namespace esphome::spanet {
 
 static const char *const TAG = "spanet";
 static constexpr const char *const STATE_UPDATE_DEBOUNCE_TIMEOUT = "state_update_debounce";
+static constexpr uint32_t STATE_UPDATE_DEBOUNCE_MS = 250;
 
 void SpaNetComponent::setup() {
   ESP_LOGI(TAG, "Setting up dummy SpaNET component");
@@ -13,6 +16,7 @@ void SpaNetComponent::setup() {
 
   this->add_on_state_callback([this](const State &state) {
     const auto &controller = state.controller_status;
+    const auto &temperatures = state.temperatures;
 
     if (this->sen_controller_model_ != nullptr && !state.controller_status.model.empty()) {
       if (this->sen_controller_model_->get_raw_state() != controller.model) {
@@ -29,6 +33,20 @@ void SpaNetComponent::setup() {
     if (this->sen_controller_serial_ != nullptr && !controller.serial_number.empty()) {
       if (this->sen_controller_serial_->get_raw_state() != controller.serial_number) {
         this->sen_controller_serial_->publish_state(controller.serial_number);
+      }
+    }
+
+    if (this->sen_water_temperature_ != nullptr && temperatures.water_c.has_value()) {
+      const float next_value = temperatures.water_c.value();
+      if (std::isnan(this->sen_water_temperature_->state) || this->sen_water_temperature_->state != next_value) {
+        this->sen_water_temperature_->publish_state(next_value);
+      }
+    }
+
+    if (this->sen_setpoint_temperature_ != nullptr && temperatures.setpoint_c.has_value()) {
+      const float next_value = temperatures.setpoint_c.value();
+      if (std::isnan(this->sen_setpoint_temperature_->state) || this->sen_setpoint_temperature_->state != next_value) {
+        this->sen_setpoint_temperature_->publish_state(next_value);
       }
     }
   });
@@ -78,7 +96,7 @@ void SpaNetComponent::on_state_update_message_(const std::string &message) {
     return;
   }
 
-  this->set_timeout(STATE_UPDATE_DEBOUNCE_TIMEOUT, SpaNetComponent::kStateUpdateDebounceMs, [this]() {
+  this->set_timeout(STATE_UPDATE_DEBOUNCE_TIMEOUT, STATE_UPDATE_DEBOUNCE_MS, [this]() {
     this->state_update_debounce_.disarm();
     this->notify_state_update_(this->register_store_.get_state());
   });
@@ -111,6 +129,12 @@ void SpaNetComponent::dump_config() {
   }
   if (this->sen_controller_fw_version_ != nullptr) {
     ESP_LOGCONFIG(TAG, "  Firmware Version: %s", this->sen_controller_fw_version_->get_name().c_str());
+  }
+  if (this->sen_water_temperature_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Water Temperature: %s", this->sen_water_temperature_->get_name().c_str());
+  }
+  if (this->sen_setpoint_temperature_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Setpoint Temperature: %s", this->sen_setpoint_temperature_->get_name().c_str());
   }
 }
 

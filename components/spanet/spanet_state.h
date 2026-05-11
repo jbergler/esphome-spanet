@@ -16,8 +16,14 @@ struct ControllerStatus {
   std::optional<time_t> current_time;
 };
 
+struct TemperatureStatus {
+  std::optional<float> water_c;
+  std::optional<float> setpoint_c;
+};
+
 struct State {
   ControllerStatus controller_status;
+  TemperatureStatus temperatures;
 };
 
 struct Registers {

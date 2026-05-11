@@ -1,6 +1,7 @@
 #include "spanet_state.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <variant>
 
 namespace esphome::spanet {
@@ -15,9 +16,20 @@ static std::string normalize_software_version(const std::string &version) {
   return normalized;
 }
 
+static std::optional<float> parse_tenths_celsius(const std::string &raw) {
+  const char *start = raw.c_str();
+  char *end = nullptr;
+  long parsed = std::strtol(start, &end, 10);
+  if (start == end || *end != '\0') {
+    return std::nullopt;
+  }
+  return static_cast<float>(parsed) / 10.0f;
+}
+
 RegisterStore::RegisterStore() {
   this->state = State{
       .controller_status = ControllerStatus{},
+      .temperatures = TemperatureStatus{},
   };
 }
 
@@ -60,6 +72,16 @@ void RegisterStore::update_controller_status() {
     tm.tm_sec = std::stoi(r2.spa_time_second);
     tm.tm_isdst = -1;
     this->state.controller_status.current_time = std::mktime(&tm);
+  }
+
+  if (this->registers_.r5.has_value()) {
+    const auto &r5 = this->registers_.r5.value();
+    this->state.temperatures.water_c = parse_tenths_celsius(r5.status_14);
+  }
+
+  if (this->registers_.r6.has_value()) {
+    const auto &r6 = this->registers_.r6.value();
+    this->state.temperatures.setpoint_c = parse_tenths_celsius(r6.set_temperature);
   }
 }
 
