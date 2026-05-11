@@ -5,6 +5,7 @@
 namespace esphome::spanet {
 
 static const char *const TAG = "spanet";
+static constexpr const char *const STATE_UPDATE_DEBOUNCE_TIMEOUT = "state_update_debounce";
 
 void SpaNetComponent::setup() {
   ESP_LOGI(TAG, "Setting up dummy SpaNET component");
@@ -31,6 +32,9 @@ void SpaNetComponent::setup() {
       }
     }
   });
+
+  // Trigger an initial poll immediately; PollingComponent handles recurring polls.
+  this->update();
 }
 
 void SpaNetComponent::loop() {
@@ -70,7 +74,14 @@ void SpaNetComponent::on_state_update_message_(const std::string &message) {
   }
 
   ESP_LOGD(TAG, "Updated register store");
-  this->notify_state_update_(this->register_store_.get_state());
+  if (!this->state_update_debounce_.try_arm()) {
+    return;
+  }
+
+  this->set_timeout(STATE_UPDATE_DEBOUNCE_TIMEOUT, SpaNetComponent::kStateUpdateDebounceMs, [this]() {
+    this->state_update_debounce_.disarm();
+    this->notify_state_update_(this->register_store_.get_state());
+  });
 }
 
 void SpaNetComponent::on_ack_message_(const std::string &message) {
@@ -79,7 +90,8 @@ void SpaNetComponent::on_ack_message_(const std::string &message) {
 }
 
 void SpaNetComponent::update() {
-  // Event-driven publishing is done from on_state_update_message_.
+  ESP_LOGV(TAG, "Requesting state poll: RF");
+  this->write_str("RF\n");
 }
 
 void SpaNetComponent::notify_state_update_(const State &state) {
