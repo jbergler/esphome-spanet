@@ -61,6 +61,9 @@ struct Registers {
       this->re = std::get<RegisterRE>(line);
     } else if (std::holds_alternative<RegisterRG>(line)) {
       this->rg = std::get<RegisterRG>(line);
+    } else if (std::holds_alternative<UnknownRegisterLine>(line)) {
+      // Unknown register labels are accepted as non-fatal updates.
+      return true;
     } else {
       return false;
     }

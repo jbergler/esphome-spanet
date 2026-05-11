@@ -64,6 +64,11 @@ TEST(RegisterStoreTest, UpdateReturnsFalseForNonRegisterLine) {
   EXPECT_FALSE(put_line(store, "S22-OK"));
 }
 
+TEST(RegisterStoreTest, UpdateReturnsTrueForUnknownRegisterLabel) {
+  RegisterStore store;
+  EXPECT_TRUE(put_line(store, ",RZ,1,2,3,:"));
+}
+
 TEST(RegisterStoreTest, UpdateReturnsTrueForValidLine) {
   RegisterStore store;
   EXPECT_TRUE(put_line(store, ",R3,10,20,30,40,50,SW V3.1,SVM1,SN123,SN456,:"));

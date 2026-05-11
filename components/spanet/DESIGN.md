@@ -2,22 +2,18 @@
 // Architecture and API contract
 // ──────────────────────────────────────────────────────────────
 //
-// Four layers between raw UART bytes and north-facing state:
+// Three layers between raw UART bytes and north-facing state:
 //
 //   UartRxBuffer       Byte framing. Emits one line per \n, stripped
 //                      of the trailing newline. No protocol knowledge.
 //
 //   SpaNetParser       Stateless. Classifies a single line and parses
-//                      one register line into its label and field list.
+//                      one register line into a typed register variant.
 //                      Holds no state between calls.
 //
-//   RfRegisterStore    Stateful raw accumulator. Holds the latest known
-//                      raw fields for every register label seen so far.
+//   RegisterStore      Stateful accumulator of latest typed registers.
 //                      Updated one parsed register line at a time.
-//
-//   SpaNetState        North-facing API. Recomputes normalized state from
-//                      the register store and hides controller register
-//                      layout details from consumers.
+//                      Exposes normalized north-facing State.
 //
 //                      Example: date/time register fields are normalized
 //                      into a single Unix epoch value.
@@ -34,15 +30,14 @@
 //
 //   1. Call classify_message on each line from UartRxBuffer.
 //
-//   2. For kStateUpdate lines, call parse_register_line() and feed the
-//      parsed (label, fields) into RfRegisterStore::update_fields().
+//   2. For kStateUpdate lines, call RegisterStore::update(line).
 //      No multi-line assembly step is needed.
 //
 //   3. Route kAck lines to command-ack handling, not to the store.
 //
-//   4. Recompute SpaNetState from the store when either:
+//   4. Publish/consume State snapshots when either:
 //      - UartRxBuffer is empty, or
 //      - no new UART data has arrived for >= 100 ms.
 //
 //      This provides stable state snapshots while preserving partial-update
-//      behavior in the raw store.
+//      behavior in the register store.

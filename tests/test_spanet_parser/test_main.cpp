@@ -36,6 +36,21 @@ TEST(ParseRegisterLineTest, ParsesRfStartLineWithEmbeddedRegister) {
   ASSERT_TRUE(std::holds_alternative<RegisterR2>(result.value()));
 }
 
+TEST(ParseRegisterLineTest, ParsesRfCommaPrefixLegacyLine) {
+  auto result = SpaNetParser::parse_register_line("RF,R2:0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,6000,342132,42286,40243,44,0,0,0,650,39660,42484,126");
+  ASSERT_TRUE(result.has_value());
+  ASSERT_TRUE(std::holds_alternative<RegisterR2>(result.value()));
+}
+
+TEST(ParseRegisterLineTest, ParsesRgWithExactlyFourteenFields) {
+  auto result = SpaNetParser::parse_register_line(",RG,1,2,3,4,5,6,7,8,9,10,11,12,13,14,:");
+  ASSERT_TRUE(result.has_value());
+  ASSERT_TRUE(std::holds_alternative<RegisterRG>(result.value()));
+
+  const auto &rg = std::get<RegisterRG>(result.value());
+  EXPECT_EQ(rg.pump_14, "14");
+}
+
 TEST(ParseRegisterLineTest, ParsesStandaloneRegisterLine) {
   auto result = SpaNetParser::parse_register_line(",R3,10,20,30,40,50,SW V3.1,SVM1,SN123,SN456,:");
   ASSERT_TRUE(result.has_value());
