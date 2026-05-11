@@ -9,32 +9,41 @@ static const char *const TAG = "spanet";
 void SpaNetComponent::setup() {
   ESP_LOGI(TAG, "Setting up dummy SpaNET component");
   this->check_uart_settings(38400);
+
+  this->add_on_state_callback([this](const State &state) {
+    const auto &controller = state.controller_status;
+
+    if (this->sen_controller_model_ != nullptr && !state.controller_status.model.empty()) {
+      if (this->sen_controller_model_->get_raw_state() != controller.model) {
+        this->sen_controller_model_->publish_state(controller.model);
+      }
+    }
+
+    if (this->sen_controller_fw_version_ != nullptr && !controller.software_version.empty()) {
+      if (this->sen_controller_fw_version_->get_raw_state() != controller.software_version) {
+        this->sen_controller_fw_version_->publish_state(controller.software_version);
+      }
+    }
+
+    if (this->sen_controller_serial_ != nullptr && !controller.serial_number.empty()) {
+      if (this->sen_controller_serial_->get_raw_state() != controller.serial_number) {
+        this->sen_controller_serial_->publish_state(controller.serial_number);
+      }
+    }
+  });
 }
 
 void SpaNetComponent::loop() {
-  bool saw_new_data = false;
-
   while (this->available() > 0) {
     uint8_t byte;
     if (!this->read_byte(&byte)) {
       break;
     }
 
-    saw_new_data = true;
-    this->last_rx_data_ms_ = millis();
-
     auto maybe_message = this->rx_buffer_.feed(byte);
     if (maybe_message.has_value()) {
       this->on_uart_message_(maybe_message.value());
     }
-  }
-
-  if (saw_new_data) {
-    this->state_dirty_ = true;
-  }
-
-  if (this->state_dirty_ && this->should_recompute_state_()) {
-    this->recompute_state_();
   }
 }
 
@@ -60,8 +69,8 @@ void SpaNetComponent::on_state_update_message_(const std::string &message) {
     return;
   }
 
-  this->state_dirty_ = true;
   ESP_LOGD(TAG, "Updated register store");
+  this->notify_state_update_(this->register_store_.get_state());
 }
 
 void SpaNetComponent::on_ack_message_(const std::string &message) {
@@ -70,28 +79,27 @@ void SpaNetComponent::on_ack_message_(const std::string &message) {
 }
 
 void SpaNetComponent::update() {
-  const auto &state = this->register_store_.get_state();
-  if (this->controller_sensor_ != nullptr && !state.controller_status.model.empty()) {
-    this->controller_sensor_->publish_state(state.controller_status.model);
-  }
+  // Event-driven publishing is done from on_state_update_message_.
 }
 
-bool SpaNetComponent::should_recompute_state_() const {
-  if (this->rx_buffer_.empty()) {
-    return true;
+void SpaNetComponent::notify_state_update_(const State &state) {
+  for (auto &callback : this->state_callbacks_) {
+    callback(state);
   }
-
-  return millis() - this->last_rx_data_ms_ >= 100;
-}
-
-void SpaNetComponent::recompute_state_() {
-  this->state_dirty_ = false;
-  ESP_LOGD(TAG, "State updated from register store");
 }
 
 void SpaNetComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "SpaNET dummy component");
   LOG_UPDATE_INTERVAL(this);
+  if (this->sen_controller_model_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Model: %s", this->sen_controller_model_->get_name().c_str());
+  }
+  if (this->sen_controller_serial_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Serial: %s", this->sen_controller_serial_->get_name().c_str());
+  }
+  if (this->sen_controller_fw_version_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Firmware Version: %s", this->sen_controller_fw_version_->get_name().c_str());
+  }
 }
 
 }  // namespace esphome::spanet

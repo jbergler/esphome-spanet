@@ -25,10 +25,9 @@ TEST(RegisterStoreTest, ExtractsIdentityAfterR3Line) {
   put_line(store, ",R3,10,20,30,40,50,SW V3.1,SVM1,SN123,SN456,:");
 
   const auto &state = store.get_state();
-  EXPECT_EQ(state.controller_status.software_version, "SW V3.1");
+  EXPECT_EQ(state.controller_status.software_version, "V3.1");
   EXPECT_EQ(state.controller_status.model, "SVM1");
-  EXPECT_EQ(state.controller_status.serial_number_1, "SN123");
-  EXPECT_EQ(state.controller_status.serial_number_2, "SN456");
+  EXPECT_EQ(state.controller_status.serial_number, "SN123-SN456");
 }
 
 TEST(RegisterStoreTest, PartialUpdateOnlyChangesOneRegister) {
@@ -47,7 +46,7 @@ TEST(RegisterStoreTest, OverwritesRegisterOnDuplicateLine) {
 
   const auto &state = store.get_state();
   EXPECT_EQ(state.controller_status.model, "NEW_MODEL");
-  EXPECT_EQ(state.controller_status.software_version, "SW V3.2");
+  EXPECT_EQ(state.controller_status.software_version, "V3.2");
 }
 
 TEST(RegisterStoreTest, ReturnsEmptyWhenR3HasTooFewFields) {
@@ -104,10 +103,9 @@ TEST(RegisterStoreTest, HandlesCompleteRealRfPayload) {
   put_line(store, ",RG,1,1,1,1,1,1,0-,1-2-0324,1-1-01,0-,0-,0,0,0,1808,:");
 
   const auto &state = store.get_state();
-  EXPECT_EQ(state.controller_status.software_version, "SW V6 21 12 13");
+  EXPECT_EQ(state.controller_status.software_version, "V6.21.12.13");
   EXPECT_EQ(state.controller_status.model, "SVM1");
-  EXPECT_EQ(state.controller_status.serial_number_1, "21460001");
-  EXPECT_EQ(state.controller_status.serial_number_2, "20000999");
+  EXPECT_EQ(state.controller_status.serial_number, "21460001-20000999");
 
   const auto &regs = store.get_registers();
   ASSERT_TRUE(regs.r2.has_value());
@@ -152,10 +150,9 @@ TEST(ControllerStatusIntegrationTest, ParsesFullExamplePayloadFromFile) {
   }
 
   const auto &state = store.get_state();
-  EXPECT_EQ(state.controller_status.software_version, "SW V6 21 12 13");
+  EXPECT_EQ(state.controller_status.software_version, "V6.21.12.13");
   EXPECT_EQ(state.controller_status.model, "SVM1");
-  EXPECT_EQ(state.controller_status.serial_number_1, "21460001");
-  EXPECT_EQ(state.controller_status.serial_number_2, "20000999");
+  EXPECT_EQ(state.controller_status.serial_number, "21460001-20000999");
   ASSERT_TRUE(state.controller_status.current_time.has_value());
   EXPECT_EQ(state.controller_status.current_time.value(), 1778453196);
 }
@@ -165,7 +162,7 @@ TEST(ControllerStatusIntegrationTest, CurrentTimeEmptyWhenOnlyR3Received) {
   store.update(",R3,10,20,30,40,50,SW V6 21 12 13,SVM1,21460001,20000999,:");
 
   const auto &state = store.get_state();
-  EXPECT_EQ(state.controller_status.software_version, "SW V6 21 12 13");
+  EXPECT_EQ(state.controller_status.software_version, "V6.21.12.13");
   EXPECT_FALSE(state.controller_status.current_time.has_value());
 }
 

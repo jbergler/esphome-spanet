@@ -12,8 +12,7 @@ namespace esphome::spanet {
 struct ControllerStatus {
   std::string software_version;
   std::string model;
-  std::string serial_number_1;
-  std::string serial_number_2;
+  std::string serial_number;
   std::optional<time_t> current_time;
 };
 
