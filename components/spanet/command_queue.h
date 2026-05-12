@@ -52,19 +52,21 @@ enum class AckResult {
 };
 
 class CommandQueue {
- public:
+public:
   using SendFn = std::function<void(const std::string &)>;
   using NowMsFn = std::function<uint32_t()>;
 
   CommandQueue(SendFn send_fn, NowMsFn now_ms_fn, size_t max_queued_commands);
 
   EnqueueResult enqueue(QueuedCommand command);
-  AckResult acknowledge(const std::string &message, InFlightCommand *matched_command);
-  bool expire_timed_out(uint32_t now_ms, InFlightCommand *timed_out_command, uint32_t *age_ms);
+  AckResult acknowledge(const std::string &message,
+                        InFlightCommand *matched_command);
+  bool expire_timed_out(uint32_t now_ms, InFlightCommand *timed_out_command,
+                        uint32_t *age_ms);
 
   bool has_pending_kind(CommandKind kind) const;
 
- private:
+private:
   void maybe_send_next_();
 
   SendFn send_fn_;
@@ -75,16 +77,14 @@ class CommandQueue {
   std::optional<InFlightCommand> in_flight_command_;
 };
 
-inline CommandQueue::CommandQueue(
-    SendFn send_fn,
-    NowMsFn now_ms_fn,
-    size_t max_queued_commands)
-    : send_fn_(std::move(send_fn)),
-      now_ms_fn_(std::move(now_ms_fn)),
+inline CommandQueue::CommandQueue(SendFn send_fn, NowMsFn now_ms_fn,
+                                  size_t max_queued_commands)
+    : send_fn_(std::move(send_fn)), now_ms_fn_(std::move(now_ms_fn)),
       max_queued_commands_(max_queued_commands) {}
 
 inline EnqueueResult CommandQueue::enqueue(QueuedCommand command) {
-  if (command.kind == CommandKind::kRfPoll && this->has_pending_kind(CommandKind::kRfPoll)) {
+  if (command.kind == CommandKind::kRfPoll &&
+      this->has_pending_kind(CommandKind::kRfPoll)) {
     return EnqueueResult::kDroppedDuplicateRfPoll;
   }
 
@@ -97,17 +97,17 @@ inline EnqueueResult CommandQueue::enqueue(QueuedCommand command) {
   return EnqueueResult::kEnqueued;
 }
 
-inline AckResult CommandQueue::acknowledge(
-    const std::string &message,
-    InFlightCommand *matched_command) {
+inline AckResult CommandQueue::acknowledge(const std::string &message,
+                                           InFlightCommand *matched_command) {
   if (!this->in_flight_command_.has_value()) {
     return AckResult::kNoInFlightCommand;
   }
 
   if (message != this->in_flight_command_->expected_ack) {
-    ESP_LOGD(TAG, "Message '%s' did not match expected ack '%s' for in-flight command",
-             message.c_str(),
-             this->in_flight_command_->expected_ack.c_str());
+    ESP_LOGD(
+        TAG,
+        "Message '%s' did not match expected ack '%s' for in-flight command",
+        message.c_str(), this->in_flight_command_->expected_ack.c_str());
     return AckResult::kUnmatchedAck;
   }
 
@@ -120,10 +120,9 @@ inline AckResult CommandQueue::acknowledge(
   return AckResult::kMatched;
 }
 
-inline bool CommandQueue::expire_timed_out(
-    uint32_t now_ms,
-    InFlightCommand *timed_out_command,
-    uint32_t *age_ms) {
+inline bool CommandQueue::expire_timed_out(uint32_t now_ms,
+                                           InFlightCommand *timed_out_command,
+                                           uint32_t *age_ms) {
   if (!this->in_flight_command_.has_value()) {
     return false;
   }
@@ -132,7 +131,8 @@ inline bool CommandQueue::expire_timed_out(
     return false;
   }
 
-  const uint32_t in_flight_age_ms = now_ms - this->in_flight_command_->sent_at_ms;
+  const uint32_t in_flight_age_ms =
+      now_ms - this->in_flight_command_->sent_at_ms;
   if (in_flight_age_ms < this->in_flight_command_->timeout_ms) {
     return false;
   }
@@ -150,7 +150,8 @@ inline bool CommandQueue::expire_timed_out(
 }
 
 inline bool CommandQueue::has_pending_kind(CommandKind kind) const {
-  if (this->in_flight_command_.has_value() && this->in_flight_command_->kind == kind) {
+  if (this->in_flight_command_.has_value() &&
+      this->in_flight_command_->kind == kind) {
     return true;
   }
 
@@ -189,4 +190,4 @@ inline void CommandQueue::maybe_send_next_() {
   }
 }
 
-}  // namespace esphome::spanet
+} // namespace esphome::spanet

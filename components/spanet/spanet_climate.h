@@ -8,13 +8,13 @@
 namespace esphome::spanet {
 
 class SpaNetClimate : public climate::Climate, public Component {
- public:
+public:
   explicit SpaNetClimate(SpaNetComponent *parent) : parent_(parent) {}
 
   void setup() override;
   void dump_config() override;
 
- protected:
+protected:
   climate::ClimateTraits traits() override;
   void control(const climate::ClimateCall &call) override;
 
@@ -23,4 +23,4 @@ class SpaNetClimate : public climate::Climate, public Component {
   SpaNetComponent *parent_;
 };
 
-}  // namespace esphome::spanet
+} // namespace esphome::spanet

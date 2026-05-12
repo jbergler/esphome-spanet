@@ -14,13 +14,12 @@ TEST(CommandQueueTest, AckedCommandBlocksQueueUntilAck) {
 
   CommandQueue manager(
       [&](const std::string &payload) { writes.push_back(payload); },
-      [&]() { return now_ms; },
-      8);
+      [&]() { return now_ms; }, 8);
 
   EXPECT_EQ(manager.enqueue(QueuedCommand{
                 .kind = CommandKind::kSetpointWrite,
                 .payload = "W40:390",
-                .expected_ack = "W40:390",
+                .expected_ack = "390",
                 .timeout_ms = 1500,
             }),
             EnqueueResult::kEnqueued);
@@ -37,7 +36,7 @@ TEST(CommandQueueTest, AckedCommandBlocksQueueUntilAck) {
   EXPECT_EQ(writes[0], "W40:390\n");
 
   InFlightCommand matched;
-  EXPECT_EQ(manager.acknowledge("W40:390", &matched), AckResult::kMatched);
+  EXPECT_EQ(manager.acknowledge("390", &matched), AckResult::kMatched);
 
   ASSERT_EQ(writes.size(), 2u);
   EXPECT_EQ(writes[1], "RF\n");
@@ -49,13 +48,12 @@ TEST(CommandQueueTest, TimeoutAdvancesQueue) {
 
   CommandQueue manager(
       [&](const std::string &payload) { writes.push_back(payload); },
-      [&]() { return now_ms; },
-      8);
+      [&]() { return now_ms; }, 8);
 
   manager.enqueue(QueuedCommand{
       .kind = CommandKind::kSetpointWrite,
       .payload = "W40:390",
-      .expected_ack = "W40:390",
+      .expected_ack = "390",
       .timeout_ms = 500,
   });
   manager.enqueue(QueuedCommand{
@@ -76,7 +74,7 @@ TEST(CommandQueueTest, TimeoutAdvancesQueue) {
   EXPECT_EQ(writes[1], "RF\n");
 }
 
-}  // namespace esphome::spanet::tests
+} // namespace esphome::spanet::tests
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

@@ -1,6 +1,6 @@
 #include "spanet.h"
-#include "esphome/core/log.h"
 #include "esphome/core/hal.h"
+#include "esphome/core/log.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -8,7 +8,8 @@
 namespace esphome::spanet {
 
 static const char *const TAG = "spanet";
-static constexpr const char *const STATE_UPDATE_DEBOUNCE_TIMEOUT = "state_update_debounce";
+static constexpr const char *const STATE_UPDATE_DEBOUNCE_TIMEOUT =
+    "state_update_debounce";
 static constexpr uint32_t STATE_UPDATE_DEBOUNCE_MS = 250;
 static constexpr uint32_t SETPOINT_COMMAND_TIMEOUT_MS = 1500;
 static constexpr float SETPOINT_MIN_C = 5.0f;
@@ -21,90 +22,112 @@ void SpaNetComponent::setup() {
 
   this->command_queue_ = std::make_unique<CommandQueue>(
       [this](const std::string &command) { this->send_uart_command_(command); },
-      []() { return millis(); },
-      MAX_QUEUED_COMMANDS);
+      []() { return millis(); }, MAX_QUEUED_COMMANDS);
 
   this->add_on_state_callback([this](const State &state) {
     const auto &controller = state.controller_status;
     const auto &temperatures = state.temperatures;
     const auto &power = state.power;
 
-    if (this->sen_controller_model_ != nullptr && !state.controller_status.model.empty()) {
+    if (this->sen_controller_model_ != nullptr &&
+        !state.controller_status.model.empty()) {
       if (this->sen_controller_model_->get_raw_state() != controller.model) {
         this->sen_controller_model_->publish_state(controller.model);
       }
     }
 
-    if (this->sen_controller_fw_version_ != nullptr && !controller.software_version.empty()) {
-      if (this->sen_controller_fw_version_->get_raw_state() != controller.software_version) {
-        this->sen_controller_fw_version_->publish_state(controller.software_version);
+    if (this->sen_controller_fw_version_ != nullptr &&
+        !controller.software_version.empty()) {
+      if (this->sen_controller_fw_version_->get_raw_state() !=
+          controller.software_version) {
+        this->sen_controller_fw_version_->publish_state(
+            controller.software_version);
       }
     }
 
-    if (this->sen_controller_serial_ != nullptr && !controller.serial_number.empty()) {
-      if (this->sen_controller_serial_->get_raw_state() != controller.serial_number) {
+    if (this->sen_controller_serial_ != nullptr &&
+        !controller.serial_number.empty()) {
+      if (this->sen_controller_serial_->get_raw_state() !=
+          controller.serial_number) {
         this->sen_controller_serial_->publish_state(controller.serial_number);
       }
     }
 
-    if (this->sen_water_temperature_ != nullptr && temperatures.water_c.has_value()) {
+    if (this->sen_water_temperature_ != nullptr &&
+        temperatures.water_c.has_value()) {
       const float next_value = temperatures.water_c.value();
-      if (std::isnan(this->sen_water_temperature_->state) || this->sen_water_temperature_->state != next_value) {
+      if (std::isnan(this->sen_water_temperature_->state) ||
+          this->sen_water_temperature_->state != next_value) {
         this->sen_water_temperature_->publish_state(next_value);
       }
     }
 
-    if (this->sen_setpoint_temperature_ != nullptr && temperatures.setpoint_c.has_value()) {
+    if (this->sen_setpoint_temperature_ != nullptr &&
+        temperatures.setpoint_c.has_value()) {
       const float next_value = temperatures.setpoint_c.value();
-      if (std::isnan(this->sen_setpoint_temperature_->state) || this->sen_setpoint_temperature_->state != next_value) {
+      if (std::isnan(this->sen_setpoint_temperature_->state) ||
+          this->sen_setpoint_temperature_->state != next_value) {
         this->sen_setpoint_temperature_->publish_state(next_value);
       }
     }
 
-    if (this->sen_heater_temperature_ != nullptr && temperatures.heater_c.has_value()) {
+    if (this->sen_heater_temperature_ != nullptr &&
+        temperatures.heater_c.has_value()) {
       const float next_value = temperatures.heater_c.value();
-      if (std::isnan(this->sen_heater_temperature_->state) || this->sen_heater_temperature_->state != next_value) {
+      if (std::isnan(this->sen_heater_temperature_->state) ||
+          this->sen_heater_temperature_->state != next_value) {
         this->sen_heater_temperature_->publish_state(next_value);
       }
     }
 
-    if (this->sen_case_temperature_ != nullptr && temperatures.case_c.has_value()) {
+    if (this->sen_case_temperature_ != nullptr &&
+        temperatures.case_c.has_value()) {
       const float next_value = temperatures.case_c.value();
-      if (std::isnan(this->sen_case_temperature_->state) || this->sen_case_temperature_->state != next_value) {
+      if (std::isnan(this->sen_case_temperature_->state) ||
+          this->sen_case_temperature_->state != next_value) {
         this->sen_case_temperature_->publish_state(next_value);
       }
     }
 
-    if (this->sen_mains_voltage_ != nullptr && power.mains_voltage_v.has_value()) {
+    if (this->sen_mains_voltage_ != nullptr &&
+        power.mains_voltage_v.has_value()) {
       const float next_value = power.mains_voltage_v.value();
-      if (std::isnan(this->sen_mains_voltage_->state) || this->sen_mains_voltage_->state != next_value) {
+      if (std::isnan(this->sen_mains_voltage_->state) ||
+          this->sen_mains_voltage_->state != next_value) {
         this->sen_mains_voltage_->publish_state(next_value);
       }
     }
 
-    if (this->sen_mains_current_ != nullptr && power.mains_current_a.has_value()) {
+    if (this->sen_mains_current_ != nullptr &&
+        power.mains_current_a.has_value()) {
       const float next_value = power.mains_current_a.value();
-      if (std::isnan(this->sen_mains_current_->state) || this->sen_mains_current_->state != next_value) {
+      if (std::isnan(this->sen_mains_current_->state) ||
+          this->sen_mains_current_->state != next_value) {
         this->sen_mains_current_->publish_state(next_value);
       }
     }
 
-    if (this->sen_instant_power_ != nullptr && power.instant_power_w.has_value()) {
+    if (this->sen_instant_power_ != nullptr &&
+        power.instant_power_w.has_value()) {
       const float next_value = power.instant_power_w.value();
-      if (std::isnan(this->sen_instant_power_->state) || this->sen_instant_power_->state != next_value) {
+      if (std::isnan(this->sen_instant_power_->state) ||
+          this->sen_instant_power_->state != next_value) {
         this->sen_instant_power_->publish_state(next_value);
       }
     }
 
-    if (this->sen_total_energy_ != nullptr && power.total_energy_kwh.has_value()) {
+    if (this->sen_total_energy_ != nullptr &&
+        power.total_energy_kwh.has_value()) {
       const float next_value = power.total_energy_kwh.value();
-      if (std::isnan(this->sen_total_energy_->state) || this->sen_total_energy_->state != next_value) {
+      if (std::isnan(this->sen_total_energy_->state) ||
+          this->sen_total_energy_->state != next_value) {
         this->sen_total_energy_->publish_state(next_value);
       }
     }
   });
 
-  // Trigger an initial poll immediately; PollingComponent handles recurring polls.
+  // Trigger an initial poll immediately; PollingComponent handles recurring
+  // polls.
   this->update();
 }
 
@@ -134,9 +157,11 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
   InFlightCommand matched_command;
   switch (this->command_queue_->acknowledge(message, &matched_command)) {
   case AckResult::kNoInFlightCommand:
-      break;
+    break;
   case AckResult::kUnmatchedAck:
-    ESP_LOGV(TAG, "Message '%s' did not match expected ack for in-flight command", message.c_str());
+    ESP_LOGV(TAG,
+             "Message '%s' did not match expected ack for in-flight command",
+             message.c_str());
     break;
   case AckResult::kMatched:
     if (matched_command.kind == CommandKind::kSetpointWrite) {
@@ -165,12 +190,12 @@ void SpaNetComponent::on_state_update_message_(const std::string &message) {
     return;
   }
 
-  this->set_timeout(STATE_UPDATE_DEBOUNCE_TIMEOUT, STATE_UPDATE_DEBOUNCE_MS, [this]() {
-    this->state_update_debounce_.disarm();
-    this->notify_state_update_(this->register_store_.get_state());
-  });
+  this->set_timeout(
+      STATE_UPDATE_DEBOUNCE_TIMEOUT, STATE_UPDATE_DEBOUNCE_MS, [this]() {
+        this->state_update_debounce_.disarm();
+        this->notify_state_update_(this->register_store_.get_state());
+      });
 }
-
 
 void SpaNetComponent::update() {
   ESP_LOGV(TAG, "Polling for state");
@@ -192,37 +217,48 @@ void SpaNetComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "SpaNET dummy component");
   LOG_UPDATE_INTERVAL(this);
   if (this->sen_controller_model_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Model: %s", this->sen_controller_model_->get_name().c_str());
+    ESP_LOGCONFIG(TAG, "  Model: %s",
+                  this->sen_controller_model_->get_name().c_str());
   }
   if (this->sen_controller_serial_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Serial: %s", this->sen_controller_serial_->get_name().c_str());
+    ESP_LOGCONFIG(TAG, "  Serial: %s",
+                  this->sen_controller_serial_->get_name().c_str());
   }
   if (this->sen_controller_fw_version_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Firmware Version: %s", this->sen_controller_fw_version_->get_name().c_str());
+    ESP_LOGCONFIG(TAG, "  Firmware Version: %s",
+                  this->sen_controller_fw_version_->get_name().c_str());
   }
   if (this->sen_water_temperature_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Water Temperature: %s", this->sen_water_temperature_->get_name().c_str());
+    ESP_LOGCONFIG(TAG, "  Water Temperature: %s",
+                  this->sen_water_temperature_->get_name().c_str());
   }
   if (this->sen_setpoint_temperature_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Setpoint Temperature: %s", this->sen_setpoint_temperature_->get_name().c_str());
+    ESP_LOGCONFIG(TAG, "  Setpoint Temperature: %s",
+                  this->sen_setpoint_temperature_->get_name().c_str());
   }
   if (this->sen_heater_temperature_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Heater Temperature: %s", this->sen_heater_temperature_->get_name().c_str());
+    ESP_LOGCONFIG(TAG, "  Heater Temperature: %s",
+                  this->sen_heater_temperature_->get_name().c_str());
   }
   if (this->sen_case_temperature_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Case Temperature: %s", this->sen_case_temperature_->get_name().c_str());
+    ESP_LOGCONFIG(TAG, "  Case Temperature: %s",
+                  this->sen_case_temperature_->get_name().c_str());
   }
   if (this->sen_mains_voltage_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Mains Voltage: %s", this->sen_mains_voltage_->get_name().c_str());
+    ESP_LOGCONFIG(TAG, "  Mains Voltage: %s",
+                  this->sen_mains_voltage_->get_name().c_str());
   }
   if (this->sen_mains_current_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Mains Current: %s", this->sen_mains_current_->get_name().c_str());
+    ESP_LOGCONFIG(TAG, "  Mains Current: %s",
+                  this->sen_mains_current_->get_name().c_str());
   }
   if (this->sen_instant_power_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Instant Power: %s", this->sen_instant_power_->get_name().c_str());
+    ESP_LOGCONFIG(TAG, "  Instant Power: %s",
+                  this->sen_instant_power_->get_name().c_str());
   }
   if (this->sen_total_energy_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Total Energy: %s", this->sen_total_energy_->get_name().c_str());
+    ESP_LOGCONFIG(TAG, "  Total Energy: %s",
+                  this->sen_total_energy_->get_name().c_str());
   }
 }
 
@@ -233,15 +269,17 @@ void SpaNetComponent::enqueue_command_(QueuedCommand command) {
 
   const CommandKind kind = command.kind;
   switch (this->command_queue_->enqueue(std::move(command))) {
-    case EnqueueResult::kEnqueued:
-      return;
-    case EnqueueResult::kDroppedDuplicateRfPoll:
-      ESP_LOGV(TAG, "Dropping duplicate RF poll while one is queued or in-flight");
-      return;
-    case EnqueueResult::kDroppedQueueFull:
-      ESP_LOGW(TAG, "Dropping command due to full queue (max=%u): cmd=%s", static_cast<unsigned>(MAX_QUEUED_COMMANDS),
-               command.payload.c_str());
-      return;
+  case EnqueueResult::kEnqueued:
+    return;
+  case EnqueueResult::kDroppedDuplicateRfPoll:
+    ESP_LOGV(TAG,
+             "Dropping duplicate RF poll while one is queued or in-flight");
+    return;
+  case EnqueueResult::kDroppedQueueFull:
+    ESP_LOGW(TAG, "Dropping command due to full queue (max=%u): cmd=%s",
+             static_cast<unsigned>(MAX_QUEUED_COMMANDS),
+             command.payload.c_str());
+    return;
   }
 }
 
@@ -252,7 +290,8 @@ void SpaNetComponent::process_command_timeouts_(uint32_t now_ms) {
 
   InFlightCommand timed_out_command;
   uint32_t age_ms = 0;
-  if (!this->command_queue_->expire_timed_out(now_ms, &timed_out_command, &age_ms)) {
+  if (!this->command_queue_->expire_timed_out(now_ms, &timed_out_command,
+                                              &age_ms)) {
     return;
   }
 
@@ -287,7 +326,8 @@ bool SpaNetComponent::request_setpoint_temperature(float target_c) {
   return true;
 }
 
-std::optional<int> SpaNetComponent::quantize_and_encode_setpoint_(float target_c) {
+std::optional<int>
+SpaNetComponent::quantize_and_encode_setpoint_(float target_c) {
   if (std::isnan(target_c)) {
     return std::nullopt;
   }
@@ -300,4 +340,4 @@ std::optional<int> SpaNetComponent::quantize_and_encode_setpoint_(float target_c
   return static_cast<int>(std::lround(quantized_c * 10.0f));
 }
 
-}  // namespace esphome::spanet
+} // namespace esphome::spanet
