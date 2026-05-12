@@ -217,8 +217,8 @@ TEST(RegisterStoreTest, ParsesPumpCapabilitiesAndRuntimeStateFromRgAndR5) {
   EXPECT_TRUE(state.pumps[1].supports_speed);
   EXPECT_TRUE(state.pumps[1].supports_auto);
   EXPECT_EQ(state.pumps[1].manual_raw_mode_count, 2u);
-  EXPECT_EQ(state.pumps[1].manual_raw_modes[0], 2);
-  EXPECT_EQ(state.pumps[1].manual_raw_modes[1], 3);
+  EXPECT_EQ(state.pumps[1].manual_raw_modes[0], 3);
+  EXPECT_EQ(state.pumps[1].manual_raw_modes[1], 2);
   ASSERT_TRUE(state.pumps[1].current_raw_mode.has_value());
   EXPECT_EQ(state.pumps[1].current_raw_mode.value(), 2);
   EXPECT_TRUE(state.pumps[1].is_on);
@@ -234,6 +234,22 @@ TEST(RegisterStoreTest, ParsesPumpCapabilitiesAndRuntimeStateFromRgAndR5) {
   ASSERT_TRUE(state.pumps[2].current_raw_mode.has_value());
   EXPECT_EQ(state.pumps[2].current_raw_mode.value(), 1);
   EXPECT_TRUE(state.pumps[2].is_on);
+}
+
+TEST(RegisterStoreTest, PreservesDeclaredManualPumpModeOrderAndDeduplicates) {
+  RegisterStore store;
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,0,0,1,0,392,0,0,0,0,0,0,0,1,2,6,6,:");
+  put_line(store, ",RG,1,1,1,1,1,1,1-2-32324X,0-,0-,0-,0-,0,0,0,1808,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.pumps[0].installed);
+  ASSERT_TRUE(state.pumps[0].capabilities_valid);
+  EXPECT_TRUE(state.pumps[0].supports_raw_mode[2]);
+  EXPECT_TRUE(state.pumps[0].supports_raw_mode[3]);
+  EXPECT_TRUE(state.pumps[0].supports_raw_mode[4]);
+  EXPECT_EQ(state.pumps[0].manual_raw_mode_count, 2u);
+  EXPECT_EQ(state.pumps[0].manual_raw_modes[0], 3);
+  EXPECT_EQ(state.pumps[0].manual_raw_modes[1], 2);
 }
 
 TEST(RegisterStoreTest, TreatsMalformedPumpInstallStateAsUnavailable) {

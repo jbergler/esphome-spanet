@@ -15,6 +15,16 @@ static constexpr float SETPOINT_MIN_C = 5.0f;
 static constexpr float SETPOINT_MAX_C = 41.0f;
 static constexpr size_t MAX_QUEUED_COMMANDS = 4;
 
+// For speed_type=2 pumps, controller command values 2/3 are inverted compared
+// to observed readback raw modes in R5. Keep readback semantics in state/fan
+// code and normalize only the outbound S22..S26 payload here.
+static int encode_pump_command_mode(const PumpStatus &pump, int desired_raw_mode) {
+  if (pump.speed_type == 2 && (desired_raw_mode == 2 || desired_raw_mode == 3)) {
+    return desired_raw_mode == 2 ? 3 : 2;
+  }
+  return desired_raw_mode;
+}
+
 void SpaNetComponent::setup() {
   ESP_LOGI(TAG, "Setting up dummy SpaNET component");
   this->check_uart_settings(38400);
@@ -326,11 +336,17 @@ bool SpaNetComponent::request_pump_mode(uint8_t pump_index, int raw_mode) {
     return false;
   }
 
+  const int command_mode = encode_pump_command_mode(pump, raw_mode);
+  if (command_mode != raw_mode) {
+    ESP_LOGV(TAG, "Pump%u translating desired mode %d to wire mode %d (speed_type=%d)", pump_index, raw_mode,
+             command_mode, pump.speed_type);
+  }
+
   const int command_family = 21 + static_cast<int>(pump_index);
   const std::string command_prefix = "S" + std::to_string(command_family);
   this->enqueue_command_(QueuedCommand{
       .kind = CommandKind::kPumpWrite,
-      .payload = command_prefix + ":" + std::to_string(raw_mode),
+      .payload = command_prefix + ":" + std::to_string(command_mode),
       .expected_ack = command_prefix + "-OK",
       .timeout_ms = COMMAND_TIMEOUT_MS,
   });

@@ -61,6 +61,9 @@ void SpaNetPumpFan::control(const fan::FanCall &call) {
       return;
     }
 
+    // Speed n maps to manual_raw_modes[n-1]. The store preserves RG-declared
+    // mode order, which lets us honor controller-specific low/high semantics
+    // even when raw numeric values are not ascending by user-facing speed.
     if (!pump.supports_speed) {
       next_raw_mode = pump.manual_raw_modes[0];
     } else {
@@ -94,6 +97,8 @@ int SpaNetPumpFan::resolve_manual_speed_(const PumpStatus &pump) const {
     return 0;
   }
 
+  // Reverse lookup of the same RG-declared manual mode order used for command
+  // writes. This keeps published speed values aligned with the UI mapping.
   const int raw_mode = pump.current_raw_mode.value();
   for (size_t i = 0; i < pump.manual_raw_mode_count; i++) {
     if (pump.manual_raw_modes[i] == raw_mode) {

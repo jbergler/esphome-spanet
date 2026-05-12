@@ -91,6 +91,15 @@ static const std::string &get_r5_pump_mode(const RegisterR5 &r5, size_t pump_ind
   }
 }
 
+// Parses RG install-state payloads of the form "installed-speed_type-allowed_states"
+// (for example "1-2-0324"). The allowed-states segment is authoritative for both
+// capability flags and manual speed ordering.
+//
+// Important: manual modes are stored in first-seen token order, not numeric order.
+// Some controllers advertise multi-speed pumps with semantic ordering that does not
+// match ascending raw values. Preserving declared order keeps UI speed mapping
+// stable (speed 1/2/3 <-> manual_raw_modes[0/1/2]) for both command writes and
+// state readback.
 static void parse_pump_install_state(const std::string &raw, PumpStatus *target) {
   *target = PumpStatus{};
 
@@ -116,6 +125,7 @@ static void parse_pump_install_state(const std::string &raw, PumpStatus *target)
   }
 
   std::array<bool, 5> supports_raw_mode{{false, false, false, false, false}};
+  std::array<bool, 3> seen_manual_mode{{false, false, false}};
   for (char token : possible_states_part) {
     if (!std::isdigit(static_cast<unsigned char>(token))) {
       continue;
@@ -123,19 +133,20 @@ static void parse_pump_install_state(const std::string &raw, PumpStatus *target)
     const int value = token - '0';
     if (value >= 0 && value <= 4) {
       supports_raw_mode[static_cast<size_t>(value)] = true;
+
+      if (value >= 1 && value <= 3) {
+        const size_t manual_index = static_cast<size_t>(value - 1);
+        if (!seen_manual_mode[manual_index] && target->manual_raw_mode_count < target->manual_raw_modes.size()) {
+          target->manual_raw_modes[target->manual_raw_mode_count] = value;
+          target->manual_raw_mode_count++;
+          seen_manual_mode[manual_index] = true;
+        }
+      }
     }
   }
 
   target->supports_raw_mode = supports_raw_mode;
   target->supports_auto = supports_raw_mode[4];
-
-  for (size_t raw_mode = 1; raw_mode <= 3; raw_mode++) {
-    if (!supports_raw_mode[raw_mode]) {
-      continue;
-    }
-    target->manual_raw_modes[target->manual_raw_mode_count] = static_cast<int>(raw_mode);
-    target->manual_raw_mode_count++;
-  }
 
   target->supports_speed = target->manual_raw_mode_count > 1;
   target->capabilities_valid = true;
