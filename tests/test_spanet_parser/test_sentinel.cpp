@@ -13,8 +13,7 @@ static std::string field_token(int one_based_index) {
   return std::string(buffer);
 }
 
-static std::string build_register_line(const std::string &label,
-                                       int field_count) {
+static std::string build_register_line(const std::string &label, int field_count) {
   std::string line = "," + label;
   for (int index = 1; index <= field_count; index++) {
     line += ",";
@@ -25,8 +24,7 @@ static std::string build_register_line(const std::string &label,
 }
 
 TEST(ParseRegisterLineSentinelTest, R2Mapping) {
-  auto result =
-      SpaNetParser::parse_register_line(build_register_line("R2", 29));
+  auto result = SpaNetParser::parse_register_line(build_register_line("R2", 29));
   ASSERT_TRUE(result.has_value());
   ASSERT_TRUE(std::holds_alternative<RegisterR2>(result.value()));
 
@@ -75,8 +73,7 @@ TEST(ParseRegisterLineSentinelTest, R3Mapping) {
 }
 
 TEST(ParseRegisterLineSentinelTest, R4Mapping) {
-  auto result =
-      SpaNetParser::parse_register_line(build_register_line("R4", 25));
+  auto result = SpaNetParser::parse_register_line(build_register_line("R4", 25));
   ASSERT_TRUE(result.has_value());
   ASSERT_TRUE(std::holds_alternative<RegisterR4>(result.value()));
 
@@ -109,8 +106,7 @@ TEST(ParseRegisterLineSentinelTest, R4Mapping) {
 }
 
 TEST(ParseRegisterLineSentinelTest, R5Mapping) {
-  auto result =
-      SpaNetParser::parse_register_line(build_register_line("R5", 26));
+  auto result = SpaNetParser::parse_register_line(build_register_line("R5", 26));
   ASSERT_TRUE(result.has_value());
   ASSERT_TRUE(std::holds_alternative<RegisterR5>(result.value()));
 
@@ -144,8 +140,7 @@ TEST(ParseRegisterLineSentinelTest, R5Mapping) {
 }
 
 TEST(ParseRegisterLineSentinelTest, R6Mapping) {
-  auto result =
-      SpaNetParser::parse_register_line(build_register_line("R6", 28));
+  auto result = SpaNetParser::parse_register_line(build_register_line("R6", 28));
   ASSERT_TRUE(result.has_value());
   ASSERT_TRUE(std::holds_alternative<RegisterR6>(result.value()));
 
@@ -181,8 +176,7 @@ TEST(ParseRegisterLineSentinelTest, R6Mapping) {
 }
 
 TEST(ParseRegisterLineSentinelTest, R7Mapping) {
-  auto result =
-      SpaNetParser::parse_register_line(build_register_line("R7", 31));
+  auto result = SpaNetParser::parse_register_line(build_register_line("R7", 31));
   ASSERT_TRUE(result.has_value());
   ASSERT_TRUE(std::holds_alternative<RegisterR7>(result.value()));
 
@@ -221,8 +215,7 @@ TEST(ParseRegisterLineSentinelTest, R7Mapping) {
 }
 
 TEST(ParseRegisterLineSentinelTest, R9Mapping) {
-  auto result =
-      SpaNetParser::parse_register_line(build_register_line("R9", 12));
+  auto result = SpaNetParser::parse_register_line(build_register_line("R9", 12));
   ASSERT_TRUE(result.has_value());
   ASSERT_TRUE(std::holds_alternative<RegisterR9>(result.value()));
 
@@ -242,8 +235,7 @@ TEST(ParseRegisterLineSentinelTest, R9Mapping) {
 }
 
 TEST(ParseRegisterLineSentinelTest, RAMapping) {
-  auto result =
-      SpaNetParser::parse_register_line(build_register_line("RA", 12));
+  auto result = SpaNetParser::parse_register_line(build_register_line("RA", 12));
   ASSERT_TRUE(result.has_value());
   ASSERT_TRUE(std::holds_alternative<RegisterRA>(result.value()));
 
@@ -263,8 +255,7 @@ TEST(ParseRegisterLineSentinelTest, RAMapping) {
 }
 
 TEST(ParseRegisterLineSentinelTest, RBMapping) {
-  auto result =
-      SpaNetParser::parse_register_line(build_register_line("RB", 12));
+  auto result = SpaNetParser::parse_register_line(build_register_line("RB", 12));
   ASSERT_TRUE(result.has_value());
   ASSERT_TRUE(std::holds_alternative<RegisterRB>(result.value()));
 
@@ -284,8 +275,7 @@ TEST(ParseRegisterLineSentinelTest, RBMapping) {
 }
 
 TEST(ParseRegisterLineSentinelTest, RCMapping) {
-  auto result =
-      SpaNetParser::parse_register_line(build_register_line("RC", 14));
+  auto result = SpaNetParser::parse_register_line(build_register_line("RC", 14));
   ASSERT_TRUE(result.has_value());
   ASSERT_TRUE(std::holds_alternative<RegisterRC>(result.value()));
 
@@ -307,8 +297,7 @@ TEST(ParseRegisterLineSentinelTest, RCMapping) {
 }
 
 TEST(ParseRegisterLineSentinelTest, REMapping) {
-  auto result =
-      SpaNetParser::parse_register_line(build_register_line("RE", 30));
+  auto result = SpaNetParser::parse_register_line(build_register_line("RE", 30));
   ASSERT_TRUE(result.has_value());
   ASSERT_TRUE(std::holds_alternative<RegisterRE>(result.value()));
 
@@ -346,8 +335,7 @@ TEST(ParseRegisterLineSentinelTest, REMapping) {
 }
 
 TEST(ParseRegisterLineSentinelTest, RGMapping) {
-  auto result =
-      SpaNetParser::parse_register_line(build_register_line("RG", 14));
+  auto result = SpaNetParser::parse_register_line(build_register_line("RG", 14));
   ASSERT_TRUE(result.has_value());
   ASSERT_TRUE(std::holds_alternative<RegisterRG>(result.value()));
 
@@ -368,4 +356,4 @@ TEST(ParseRegisterLineSentinelTest, RGMapping) {
   EXPECT_EQ(rg.unknown_14, field_token(14));
 }
 
-} // namespace esphome::spanet::tests
+}  // namespace esphome::spanet::tests

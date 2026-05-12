@@ -8,9 +8,7 @@
 
 namespace esphome::spanet::tests {
 
-static bool put_line(RegisterStore &store, const std::string &line) {
-  return store.update(line);
-}
+static bool put_line(RegisterStore &store, const std::string &line) { return store.update(line); }
 
 TEST(RegisterStoreTest, ReturnsEmptyControllerStatusBeforeR3IsReceived) {
   RegisterStore store;
@@ -71,9 +69,8 @@ TEST(RegisterStoreTest, UpdateReturnsTrueForUnknownRegisterLabel) {
 TEST(RegisterStoreTest, UpdateReturnsTrueForValidLine) {
   RegisterStore store;
   EXPECT_TRUE(put_line(store, ",R3,10,20,30,40,50,SW V3.1,SVM1,SN123,SN456,:"));
-  EXPECT_TRUE(put_line(
-      store, "RF:,R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,"
-             "6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:"));
+  EXPECT_TRUE(put_line(store, "RF:,R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,"
+                              "6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:"));
 }
 
 TEST(RegisterStoreTest, StoresTypedRegistersInRegistersStruct) {
@@ -92,16 +89,14 @@ TEST(RegisterStoreTest, StoresTypedRegistersInRegistersStruct) {
 TEST(RegisterStoreTest, HandlesCompleteRealRfPayload) {
   RegisterStore store;
 
-  put_line(store,
-           "RF:,R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,"
-           "6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:");
+  put_line(store, "RF:,R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,"
+                  "6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:");
   put_line(store, ",R3,10,1,4,4,4,SW V6 21 12 "
                   "13,SVM1,21460001,20000999,0,1,0,0,0,0,NA,1,0,414,Auto,650,0,"
                   "7,7,0,0,0,:");
   put_line(store, ",R4,NORM,0,0,0,2,0,254,4,20,0,0,0,0,0,0,0,262144,3,0,101,0,"
                   "2022,6,80,50,0,0,5,:");
-  put_line(store,
-           ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
   put_line(store, ",R6,5,3,1,1,5,1,4,390,1,0,3584,5120,31,96,5632,5918,1792,"
                   "1792,0,30,0,0,0,0,1,5,0,410,:");
   put_line(store, ",R7,1792,0,1,0,1,0,0,6,2,2023,250,217,238,226,280,125,136,1,"
@@ -110,9 +105,7 @@ TEST(RegisterStoreTest, HandlesCompleteRealRfPayload) {
   put_line(store, ",RA,F2,880,5679,4,0,231,9999,496,47,0,200,380,:");
   put_line(store, ",RB,F3,879,5890,4,0,242,9999,208,46,0,255,380,:");
   put_line(store, ",RC,0,1,1,0,0,0,0,0,0,2,0,0,0,0,:");
-  put_line(
-      store,
-      ",RE,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,-4,13,30,8,5,1,:");
+  put_line(store, ",RE,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,-4,13,30,8,5,1,:");
   put_line(store, ",RG,1,1,1,1,1,1,0-,1-2-0324,1-1-01,0-,0-,0,0,0,1808,:");
 
   const auto &state = store.get_state();
@@ -147,8 +140,7 @@ TEST(RegisterStoreTest, ParsesR2DatetimeIntoCurrentTime) {
 
 TEST(RegisterStoreTest, ParsesWaterAndSetpointTemperaturesFromR5AndR6) {
   RegisterStore store;
-  put_line(store,
-           ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
   put_line(store, ",R6,5,3,1,1,5,1,4,390,1,0,3584,5120,31,96,5632,5918,1792,"
                   "1792,0,30,0,0,0,0,1,5,0,410,:");
 
@@ -161,8 +153,7 @@ TEST(RegisterStoreTest, ParsesWaterAndSetpointTemperaturesFromR5AndR6) {
 
 TEST(RegisterStoreTest, ParsesHeatingActiveFromR5HeaterReadback) {
   RegisterStore store;
-  put_line(store,
-           ",R5,0,1,0,5,0,0,0,0,0,0,1,1,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,1,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
 
   const auto &state = store.get_state();
   ASSERT_TRUE(state.climate.heating_active.has_value());
@@ -171,8 +162,7 @@ TEST(RegisterStoreTest, ParsesHeatingActiveFromR5HeaterReadback) {
 
 TEST(RegisterStoreTest, ParsesHeatingInactiveFromR5HeaterReadback) {
   RegisterStore store;
-  put_line(store,
-           ",R5,0,1,0,5,0,0,0,0,0,0,0,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,0,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
 
   const auto &state = store.get_state();
   ASSERT_TRUE(state.climate.heating_active.has_value());
@@ -246,7 +236,7 @@ TEST(ControllerStatusIntegrationTest, CurrentTimeEmptyWhenOnlyR3Received) {
   EXPECT_FALSE(state.controller_status.current_time.has_value());
 }
 
-} // namespace esphome::spanet::tests
+}  // namespace esphome::spanet::tests
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

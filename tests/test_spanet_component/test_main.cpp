@@ -12,9 +12,7 @@ TEST(CommandQueueTest, AckedCommandBlocksQueueUntilAck) {
   std::vector<std::string> writes;
   uint32_t now_ms = 100;
 
-  CommandQueue manager(
-      [&](const std::string &payload) { writes.push_back(payload); },
-      [&]() { return now_ms; }, 8);
+  CommandQueue manager([&](const std::string &payload) { writes.push_back(payload); }, [&]() { return now_ms; }, 8);
 
   EXPECT_EQ(manager.enqueue(QueuedCommand{
                 .kind = CommandKind::kSetpointWrite,
@@ -46,9 +44,7 @@ TEST(CommandQueueTest, TimeoutAdvancesQueue) {
   std::vector<std::string> writes;
   uint32_t now_ms = 100;
 
-  CommandQueue manager(
-      [&](const std::string &payload) { writes.push_back(payload); },
-      [&]() { return now_ms; }, 8);
+  CommandQueue manager([&](const std::string &payload) { writes.push_back(payload); }, [&]() { return now_ms; }, 8);
 
   manager.enqueue(QueuedCommand{
       .kind = CommandKind::kSetpointWrite,
@@ -74,7 +70,7 @@ TEST(CommandQueueTest, TimeoutAdvancesQueue) {
   EXPECT_EQ(writes[1], "RF\n");
 }
 
-} // namespace esphome::spanet::tests
+}  // namespace esphome::spanet::tests
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

@@ -33,7 +33,7 @@ TEST(UartRxBufferTest, IgnoresCarriageReturn) {
   EXPECT_EQ(out.value(), "AB");
 }
 
-} // namespace esphome::spanet::tests
+}  // namespace esphome::spanet::tests
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

@@ -50,8 +50,7 @@ struct RegisterR2 {
   std::string relay_8;
   std::string relay_9;
 
-  static std::optional<RegisterR2>
-  from_fields(const std::vector<std::string> &fields) {
+  static std::optional<RegisterR2> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 28) {
       return std::nullopt;
     }
@@ -103,8 +102,7 @@ struct RegisterR3 {
   std::string serial_number_1;
   std::string serial_number_2;
 
-  static std::optional<RegisterR3>
-  from_fields(const std::vector<std::string> &fields) {
+  static std::optional<RegisterR3> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= kSerial2Index) {
       return std::nullopt;
     }
@@ -147,8 +145,7 @@ struct RegisterR4 {
   std::string vari_speed;
   std::string vari_percent;
 
-  static std::optional<RegisterR4>
-  from_fields(const std::vector<std::string> &fields) {
+  static std::optional<RegisterR4> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 24) {
       return std::nullopt;
     }
@@ -213,8 +210,7 @@ struct RegisterR5 {
   std::string status_24;
   std::string status_25;
 
-  static std::optional<RegisterR5>
-  from_fields(const std::vector<std::string> &fields) {
+  static std::optional<RegisterR5> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 25) {
       return std::nullopt;
     }
@@ -282,8 +278,7 @@ struct RegisterR6 {
   std::string gas;
   std::string unknown_28;
 
-  static std::optional<RegisterR6>
-  from_fields(const std::vector<std::string> &fields) {
+  static std::optional<RegisterR6> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 27) {
       return std::nullopt;
     }
@@ -356,8 +351,7 @@ struct RegisterR7 {
   std::string pmax;
   std::string unknown_31;
 
-  static std::optional<RegisterR7>
-  from_fields(const std::vector<std::string> &fields) {
+  static std::optional<RegisterR7> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 30) {
       return std::nullopt;
     }
@@ -414,8 +408,7 @@ struct RegisterR9 {
   std::string accum_10;
   std::string accum_11;
 
-  static std::optional<RegisterR9>
-  from_fields(const std::vector<std::string> &fields) {
+  static std::optional<RegisterR9> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 11) {
       return std::nullopt;
     }
@@ -453,8 +446,7 @@ struct RegisterRA {
   std::string accum_10;
   std::string accum_11;
 
-  static std::optional<RegisterRA>
-  from_fields(const std::vector<std::string> &fields) {
+  static std::optional<RegisterRA> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 11) {
       return std::nullopt;
     }
@@ -492,8 +484,7 @@ struct RegisterRB {
   std::string accum_10;
   std::string accum_11;
 
-  static std::optional<RegisterRB>
-  from_fields(const std::vector<std::string> &fields) {
+  static std::optional<RegisterRB> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 11) {
       return std::nullopt;
     }
@@ -533,8 +524,7 @@ struct RegisterRC {
   std::string unknown_13;
   std::string unknown_14;
 
-  static std::optional<RegisterRC>
-  from_fields(const std::vector<std::string> &fields) {
+  static std::optional<RegisterRC> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 13) {
       return std::nullopt;
     }
@@ -592,8 +582,7 @@ struct RegisterRE {
   std::string dele;
   std::string dpmp;
 
-  static std::optional<RegisterRE>
-  from_fields(const std::vector<std::string> &fields) {
+  static std::optional<RegisterRE> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 29) {
       return std::nullopt;
     }
@@ -651,8 +640,7 @@ struct RegisterRG {
   std::string unknown_13;
   std::string unknown_14;
 
-  static std::optional<RegisterRG>
-  from_fields(const std::vector<std::string> &fields) {
+  static std::optional<RegisterRG> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() < 14) {
       return std::nullopt;
     }
@@ -683,14 +671,12 @@ struct UnknownRegisterLine {
   std::vector<std::string> fields;
 };
 
-using AnyRegisterLine =
-    std::variant<RegisterR2, RegisterR3, RegisterR4, RegisterR5, RegisterR6,
-                 RegisterR7, RegisterR9, RegisterRA, RegisterRB, RegisterRC,
-                 RegisterRE, RegisterRG, UnknownRegisterLine>;
+using AnyRegisterLine = std::variant<RegisterR2, RegisterR3, RegisterR4, RegisterR5, RegisterR6, RegisterR7, RegisterR9,
+                                     RegisterRA, RegisterRB, RegisterRC, RegisterRE, RegisterRG, UnknownRegisterLine>;
 
 // SpaNetParser is stateless. Every method is a pure function of its inputs.
 class SpaNetParser {
-public:
+ public:
   // Determines the routing of a single UART line (no embedded newlines).
   //   kStateUpdate -> feed into RegisterStore::update()
   //   kAck         -> match against a pending command expectation
@@ -710,15 +696,13 @@ public:
     // the first and second comma.
     if (!trimmed.empty() && trimmed[0] == ',') {
       auto second_comma = trimmed.find(',', 1);
-      if (second_comma != std::string::npos &&
-          is_register_label_(trimmed.substr(1, second_comma - 1))) {
+      if (second_comma != std::string::npos && is_register_label_(trimmed.substr(1, second_comma - 1))) {
         return MessageType::kStateUpdate;
       }
     }
 
     auto colon_pos = trimmed.find(':');
-    if (colon_pos != std::string::npos &&
-        is_register_label_(trimmed.substr(0, colon_pos))) {
+    if (colon_pos != std::string::npos && is_register_label_(trimmed.substr(0, colon_pos))) {
       return MessageType::kStateUpdate;
     }
 
@@ -736,8 +720,7 @@ public:
   // Handles both line shapes present in real SpaNET RF responses:
   //   RF start line:   "RF:,R2,1,2,3,:" or "RF,R2:1,2,3"
   //   Continuation:    ",R3,10,20,30,:" or "R3:10,20,30"
-  static std::optional<AnyRegisterLine>
-  parse_register_line(const std::string &line) {
+  static std::optional<AnyRegisterLine> parse_register_line(const std::string &line) {
     auto content = trim_(line);
 
     // Strip RF start prefixes from the first response line.
@@ -752,8 +735,7 @@ public:
     // Legacy shape after optional prefix stripping: {LABEL}:{fields}
     auto first_comma = content.find(',');
     auto first_colon = content.find(':');
-    if (first_colon != std::string::npos &&
-        (first_comma == std::string::npos || first_colon < first_comma)) {
+    if (first_colon != std::string::npos && (first_comma == std::string::npos || first_colon < first_comma)) {
       auto label = content.substr(0, first_colon);
       if (!is_register_label_(label)) {
         return std::nullopt;
@@ -790,10 +772,8 @@ public:
     return decode_register_line_(label, std::move(all_fields));
   }
 
-private:
-  static AnyRegisterLine
-  decode_register_line_(const std::string &label,
-                        const std::vector<std::string> &fields) {
+ private:
+  static AnyRegisterLine decode_register_line_(const std::string &label, const std::vector<std::string> &fields) {
     if (label == "R2") {
       if (auto reg = RegisterR2::from_fields(fields)) {
         return reg.value();
@@ -847,13 +827,11 @@ private:
   }
 
   static std::string trim_(std::string value) {
-    while (!value.empty() &&
-           std::isspace(static_cast<unsigned char>(value.front()))) {
+    while (!value.empty() && std::isspace(static_cast<unsigned char>(value.front()))) {
       value.erase(value.begin());
     }
 
-    while (!value.empty() &&
-           std::isspace(static_cast<unsigned char>(value.back()))) {
+    while (!value.empty() && std::isspace(static_cast<unsigned char>(value.back()))) {
       value.pop_back();
     }
 
@@ -893,4 +871,4 @@ private:
   }
 };
 
-} // namespace esphome::spanet
+}  // namespace esphome::spanet

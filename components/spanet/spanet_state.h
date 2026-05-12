@@ -113,7 +113,7 @@ struct StoreRegisterVisitor {
 };
 
 class RegisterStore {
-public:
+ public:
   RegisterStore();
 
   bool update(const std::string &line);
@@ -122,11 +122,11 @@ public:
 
   const Registers &get_registers() const;
 
-private:
+ private:
   State state;
   Registers registers_ = {};
 
   void update_controller_status();
 };
 
-} // namespace esphome::spanet
+}  // namespace esphome::spanet

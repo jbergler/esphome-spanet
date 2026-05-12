@@ -26,8 +26,7 @@ static std::optional<float> parse_tenths_celsius(const std::string &raw) {
   return static_cast<float>(parsed) / 10.0f;
 }
 
-static std::optional<float> parse_scaled_float(const std::string &raw,
-                                               float scale) {
+static std::optional<float> parse_scaled_float(const std::string &raw, float scale) {
   const char *start = raw.c_str();
   char *end = nullptr;
   long parsed = std::strtol(start, &end, 10);
@@ -37,9 +36,7 @@ static std::optional<float> parse_scaled_float(const std::string &raw,
   return static_cast<float>(parsed) / scale;
 }
 
-static std::optional<float> parse_integer_float(const std::string &raw) {
-  return parse_scaled_float(raw, 1.0f);
-}
+static std::optional<float> parse_integer_float(const std::string &raw) { return parse_scaled_float(raw, 1.0f); }
 
 static std::optional<bool> parse_bool_flag(const std::string &raw) {
   const char *start = raw.c_str();
@@ -74,22 +71,16 @@ bool RegisterStore::update(const std::string &line) {
   return true;
 }
 
-bool Registers::update(const AnyRegisterLine &line) {
-  return std::visit(StoreRegisterVisitor{this}, line);
-}
+bool Registers::update(const AnyRegisterLine &line) { return std::visit(StoreRegisterVisitor{this}, line); }
 
-const Registers &RegisterStore::get_registers() const {
-  return this->registers_;
-}
+const Registers &RegisterStore::get_registers() const { return this->registers_; }
 
 void RegisterStore::update_controller_status() {
   if (this->registers_.r3.has_value()) {
     const auto &r3 = this->registers_.r3.value();
-    this->state.controller_status.software_version =
-        normalize_software_version(r3.software_version);
+    this->state.controller_status.software_version = normalize_software_version(r3.software_version);
     this->state.controller_status.model = r3.model;
-    this->state.controller_status.serial_number =
-        r3.serial_number_1 + "-" + r3.serial_number_2;
+    this->state.controller_status.serial_number = r3.serial_number_1 + "-" + r3.serial_number_2;
   }
 
   if (this->registers_.r2.has_value()) {
@@ -104,12 +95,10 @@ void RegisterStore::update_controller_status() {
     tm.tm_isdst = -1;
     this->state.controller_status.current_time = std::mktime(&tm);
 
-    this->state.temperatures.heater_c =
-        parse_tenths_celsius(r2.heater_temperature);
+    this->state.temperatures.heater_c = parse_tenths_celsius(r2.heater_temperature);
     this->state.temperatures.case_c = parse_tenths_celsius(r2.case_temperature);
     this->state.power.mains_voltage_v = parse_integer_float(r2.mains_voltage);
-    this->state.power.mains_current_a =
-        parse_scaled_float(r2.mains_current, 10.0f);
+    this->state.power.mains_current_a = parse_scaled_float(r2.mains_current, 10.0f);
   }
 
   if (this->registers_.r5.has_value()) {
@@ -120,16 +109,14 @@ void RegisterStore::update_controller_status() {
 
   if (this->registers_.r6.has_value()) {
     const auto &r6 = this->registers_.r6.value();
-    this->state.temperatures.setpoint_c =
-        parse_tenths_celsius(r6.set_temperature);
+    this->state.temperatures.setpoint_c = parse_tenths_celsius(r6.set_temperature);
   }
 
   if (this->registers_.r4.has_value()) {
     const auto &r4 = this->registers_.r4.value();
     this->state.power.instant_power_w = parse_scaled_float(r4.power, 10.0f);
-    this->state.power.total_energy_kwh =
-        parse_scaled_float(r4.power_kwh, 100.0f);
+    this->state.power.total_energy_kwh = parse_scaled_float(r4.power_kwh, 100.0f);
   }
 }
 
-} // namespace esphome::spanet
+}  // namespace esphome::spanet

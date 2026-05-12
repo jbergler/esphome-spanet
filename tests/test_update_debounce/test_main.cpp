@@ -8,7 +8,7 @@ namespace {
 uint32_t g_fake_now_ms = 0;
 
 uint32_t fake_now_ms() { return g_fake_now_ms; }
-} // namespace
+}  // namespace
 
 TEST(UpdateDebounceGateTest, StartsDisarmed) {
   UpdateDebounceGate gate{50, &fake_now_ms};
@@ -52,7 +52,7 @@ TEST(UpdateDebounceGateTest, AutoExpiresAfterTimeout) {
   EXPECT_TRUE(gate.try_arm());
 }
 
-} // namespace esphome::spanet::tests
+}  // namespace esphome::spanet::tests
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
