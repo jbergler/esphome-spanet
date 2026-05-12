@@ -139,8 +139,13 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
       ESP_LOGV(TAG, "Message '%s' did not match expected ack for in-flight command", message.c_str());
       break;
     case AckResult::kMatched:
-      if (matched_command.kind == CommandKind::kSetpointWrite) {
-        // TODO: dynamically update value (rather than waiting for next poll)
+      if (matched_command.kind == CommandKind::kSetpointWrite || matched_command.kind == CommandKind::kPumpWrite) {
+        this->enqueue_command_(QueuedCommand{
+            .kind = CommandKind::kRfPoll,
+            .payload = "RF",
+            .expected_ack = "RF:",
+            .timeout_ms = 500,
+        });
       }
       return;
   }
@@ -285,6 +290,20 @@ bool SpaNetComponent::request_setpoint_temperature(float target_c) {
   return true;
 }
 
+std::optional<int> SpaNetComponent::quantize_and_encode_setpoint_(float target_c) {
+  if (std::isnan(target_c)) {
+    return std::nullopt;
+  }
+
+  const float quantized_c = std::round(target_c * 5.0f) / 5.0f;
+  if (quantized_c < SETPOINT_MIN_C || quantized_c > SETPOINT_MAX_C) {
+    return std::nullopt;
+  }
+
+  return static_cast<int>(std::lround(quantized_c * 10.0f));
+}
+
+// Pump controls
 bool SpaNetComponent::request_pump_mode(uint8_t pump_index, int raw_mode) {
   if (pump_index < 1 || pump_index > 5) {
     ESP_LOGW(TAG, "Rejected invalid pump index %u", pump_index);
@@ -316,19 +335,6 @@ bool SpaNetComponent::request_pump_mode(uint8_t pump_index, int raw_mode) {
       .timeout_ms = COMMAND_TIMEOUT_MS,
   });
   return true;
-}
-
-std::optional<int> SpaNetComponent::quantize_and_encode_setpoint_(float target_c) {
-  if (std::isnan(target_c)) {
-    return std::nullopt;
-  }
-
-  const float quantized_c = std::round(target_c * 5.0f) / 5.0f;
-  if (quantized_c < SETPOINT_MIN_C || quantized_c > SETPOINT_MAX_C) {
-    return std::nullopt;
-  }
-
-  return static_cast<int>(std::lround(quantized_c * 10.0f));
 }
 
 }  // namespace esphome::spanet
