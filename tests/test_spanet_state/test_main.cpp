@@ -143,6 +143,24 @@ TEST(RegisterStoreTest, ParsesWaterAndSetpointTemperaturesFromR5AndR6) {
   EXPECT_NEAR(state.temperatures.setpoint_c.value(), 39.0f, 0.01f);
 }
 
+TEST(RegisterStoreTest, ParsesHeatingActiveFromR5HeaterReadback) {
+  RegisterStore store;
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,1,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.climate.heating_active.has_value());
+  EXPECT_TRUE(state.climate.heating_active.value());
+}
+
+TEST(RegisterStoreTest, ParsesHeatingInactiveFromR5HeaterReadback) {
+  RegisterStore store;
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,0,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.climate.heating_active.has_value());
+  EXPECT_FALSE(state.climate.heating_active.value());
+}
+
 TEST(RegisterStoreTest, ParsesR2TelemetryWithExpectedScaling) {
   RegisterStore store;
   put_line(store, ",R2,77,240,245,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:");

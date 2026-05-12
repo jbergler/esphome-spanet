@@ -51,3 +51,8 @@ sensor:
       name: "SpaNET Instant Power"
     total_energy:
       name: "SpaNET Total Energy"
+
+climate:
+  - platform: spanet
+    spanet_id: spa_hub
+    name: "SpaNET Climate"

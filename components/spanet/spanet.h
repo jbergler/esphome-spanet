@@ -2,6 +2,9 @@
 
 #include <cstdint>
 #include <functional>
+#include <memory>
+#include <optional>
+#include <string>
 #include <vector>
 
 #include "esphome/components/sensor/sensor.h"
@@ -9,6 +12,7 @@
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/uart/uart.h"
 
+#include "command_queue.h"
 #include "spanet_parser.h"
 #include "spanet_state.h"
 #include "update_debounce.h"
@@ -34,6 +38,9 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   void set_instant_power_sensor(sensor::Sensor *sensor) { this->sen_instant_power_ = sensor; }
   void set_total_energy_sensor(sensor::Sensor *sensor) { this->sen_total_energy_ = sensor; }
   void add_on_state_callback(StateUpdateCallback callback) { this->state_callbacks_.push_back(std::move(callback)); }
+  bool request_setpoint_temperature(float target_c);
+  bool is_setpoint_write_pending() const;
+  const State &get_state() const { return this->register_store_.get_state(); }
 
   void setup() override;
   void loop() override;
@@ -45,6 +52,10 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   void on_state_update_message_(const std::string &message);
   void on_ack_message_(const std::string &message);
   void notify_state_update_(const State &state);
+  std::optional<int> quantize_and_encode_setpoint_(float target_c);
+  void enqueue_command_(QueuedCommand command);
+  void process_command_timeouts_(uint32_t now_ms);
+  virtual void send_uart_command_(const std::string &command);
 
   text_sensor::TextSensor *sen_controller_model_{nullptr};
   text_sensor::TextSensor *sen_controller_serial_{nullptr};
@@ -61,6 +72,8 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   RegisterStore register_store_;
   UpdateDebounceGate state_update_debounce_{250};
   std::vector<StateUpdateCallback> state_callbacks_;
+  std::unique_ptr<CommandQueue> command_queue_;
+  std::optional<int> awaiting_setpoint_reconcile_tenths_;
 };
 
 }  // namespace esphome::spanet

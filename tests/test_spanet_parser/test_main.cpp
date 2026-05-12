@@ -21,6 +21,8 @@ TEST(ClassifyMessageTest, StandaloneRegisterLineIsStateUpdate) {
 TEST(ClassifyMessageTest, SAndWPrefixedLinesAreAck) {
   EXPECT_EQ(SpaNetParser::classify_message("S22-OK"), MessageType::kAck);
   EXPECT_EQ(SpaNetParser::classify_message("W40:380"), MessageType::kAck);
+  EXPECT_EQ(SpaNetParser::classify_message("W40:390"), MessageType::kAck);
+  EXPECT_EQ(SpaNetParser::classify_message("W40:374"), MessageType::kAck);
 }
 
 TEST(ClassifyMessageTest, UnrecognisedLinesAreUnknown) {

@@ -40,11 +40,22 @@ static std::optional<float> parse_integer_float(const std::string &raw) {
   return parse_scaled_float(raw, 1.0f);
 }
 
+static std::optional<bool> parse_bool_flag(const std::string &raw) {
+  const char *start = raw.c_str();
+  char *end = nullptr;
+  long parsed = std::strtol(start, &end, 10);
+  if (start == end || *end != '\0') {
+    return std::nullopt;
+  }
+  return parsed != 0;
+}
+
 RegisterStore::RegisterStore() {
   this->state = State{
       .controller_status = ControllerStatus{},
       .temperatures = TemperatureStatus{},
       .power = PowerStatus{},
+      .climate = ClimateStatus{},
   };
 }
 
@@ -97,6 +108,7 @@ void RegisterStore::update_controller_status() {
   if (this->registers_.r5.has_value()) {
     const auto &r5 = this->registers_.r5.value();
     this->state.temperatures.water_c = parse_tenths_celsius(r5.status_14);
+    this->state.climate.heating_active = parse_bool_flag(r5.status_11);
   }
 
   if (this->registers_.r6.has_value()) {

@@ -30,10 +30,15 @@ struct PowerStatus {
   std::optional<float> total_energy_kwh;
 };
 
+struct ClimateStatus {
+  std::optional<bool> heating_active;
+};
+
 struct State {
   ControllerStatus controller_status;
   TemperatureStatus temperatures;
   PowerStatus power;
+  ClimateStatus climate;
 };
 
 struct Registers {

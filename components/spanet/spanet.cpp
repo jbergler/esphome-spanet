@@ -3,16 +3,26 @@
 #include "esphome/core/hal.h"
 
 #include <cmath>
+#include <cstdlib>
 
 namespace esphome::spanet {
 
 static const char *const TAG = "spanet";
 static constexpr const char *const STATE_UPDATE_DEBOUNCE_TIMEOUT = "state_update_debounce";
 static constexpr uint32_t STATE_UPDATE_DEBOUNCE_MS = 250;
+static constexpr uint32_t SETPOINT_COMMAND_TIMEOUT_MS = 1500;
+static constexpr float SETPOINT_MIN_C = 5.0f;
+static constexpr float SETPOINT_MAX_C = 41.0f;
+static constexpr size_t MAX_QUEUED_COMMANDS = 4;
 
 void SpaNetComponent::setup() {
   ESP_LOGI(TAG, "Setting up dummy SpaNET component");
   this->check_uart_settings(38400);
+
+  this->command_queue_ = std::make_unique<CommandQueue>(
+      [this](const std::string &command) { this->send_uart_command_(command); },
+      []() { return millis(); },
+      MAX_QUEUED_COMMANDS);
 
   this->add_on_state_callback([this](const State &state) {
     const auto &controller = state.controller_status;
@@ -110,21 +120,38 @@ void SpaNetComponent::loop() {
       this->on_uart_message_(maybe_message.value());
     }
   }
+
+  this->process_command_timeouts_(millis());
 }
 
 void SpaNetComponent::on_uart_message_(const std::string &message) {
-  ESP_LOGI(TAG, "Received UART message: %s", message.c_str());
+  ESP_LOGI(TAG, "UART RX: '%s'", message.c_str());
+
+  if (this->command_queue_ == nullptr) {
+    return;
+  }
+
+  InFlightCommand matched_command;
+  switch (this->command_queue_->acknowledge(message, &matched_command)) {
+  case AckResult::kNoInFlightCommand:
+      break;
+  case AckResult::kUnmatchedAck:
+    ESP_LOGV(TAG, "Message '%s' did not match expected ack for in-flight command", message.c_str());
+    break;
+  case AckResult::kMatched:
+    if (matched_command.kind == CommandKind::kSetpointWrite) {
+      // TODO: dynamically update value (rather than waiting for next poll)
+    }
+    return;
+  }
 
   switch (SpaNetParser::classify_message(message)) {
-    case MessageType::kStateUpdate:
-      this->on_state_update_message_(message);
-      break;
-    case MessageType::kAck:
-      this->on_ack_message_(message);
-      break;
-    case MessageType::kUnknown:
-      ESP_LOGW(TAG, "Ignoring unknown UART payload");
-      break;
+  case MessageType::kStateUpdate:
+    this->on_state_update_message_(message);
+    break;
+  case MessageType::kUnknown:
+    ESP_LOGW(TAG, "Ignoring unknown message '%s'", message.c_str());
+    break;
   }
 }
 
@@ -134,7 +161,6 @@ void SpaNetComponent::on_state_update_message_(const std::string &message) {
     return;
   }
 
-  ESP_LOGD(TAG, "Updated register store");
   if (!this->state_update_debounce_.try_arm()) {
     return;
   }
@@ -145,14 +171,15 @@ void SpaNetComponent::on_state_update_message_(const std::string &message) {
   });
 }
 
-void SpaNetComponent::on_ack_message_(const std::string &message) {
-  // TODO: Match acknowledgements against pending commands and invoke completion callbacks.
-  ESP_LOGI(TAG, "Received command acknowledgement: %s", message.c_str());
-}
 
 void SpaNetComponent::update() {
-  ESP_LOGV(TAG, "Requesting state poll: RF");
-  this->write_str("RF\n");
+  ESP_LOGV(TAG, "Polling for state");
+  this->enqueue_command_(QueuedCommand{
+      .kind = CommandKind::kRfPoll,
+      .payload = "RF",
+      .expected_ack = "RF:",
+      .timeout_ms = 500,
+  });
 }
 
 void SpaNetComponent::notify_state_update_(const State &state) {
@@ -197,6 +224,80 @@ void SpaNetComponent::dump_config() {
   if (this->sen_total_energy_ != nullptr) {
     ESP_LOGCONFIG(TAG, "  Total Energy: %s", this->sen_total_energy_->get_name().c_str());
   }
+}
+
+void SpaNetComponent::enqueue_command_(QueuedCommand command) {
+  if (this->command_queue_ == nullptr) {
+    return;
+  }
+
+  const CommandKind kind = command.kind;
+  switch (this->command_queue_->enqueue(std::move(command))) {
+    case EnqueueResult::kEnqueued:
+      return;
+    case EnqueueResult::kDroppedDuplicateRfPoll:
+      ESP_LOGV(TAG, "Dropping duplicate RF poll while one is queued or in-flight");
+      return;
+    case EnqueueResult::kDroppedQueueFull:
+      ESP_LOGW(TAG, "Dropping command due to full queue (max=%u): cmd=%s", static_cast<unsigned>(MAX_QUEUED_COMMANDS),
+               command.payload.c_str());
+      return;
+  }
+}
+
+void SpaNetComponent::process_command_timeouts_(uint32_t now_ms) {
+  if (this->command_queue_ == nullptr) {
+    return;
+  }
+
+  InFlightCommand timed_out_command;
+  uint32_t age_ms = 0;
+  if (!this->command_queue_->expire_timed_out(now_ms, &timed_out_command, &age_ms)) {
+    return;
+  }
+
+  ESP_LOGW(TAG, "Command timed out after %u ms: payload=%s", age_ms,
+           timed_out_command.payload.c_str());
+
+  if (timed_out_command.kind == CommandKind::kSetpointWrite) {
+    this->awaiting_setpoint_reconcile_tenths_.reset();
+  }
+}
+
+void SpaNetComponent::send_uart_command_(const std::string &command) {
+  ESP_LOGI(TAG, "UART TX: %s", command.c_str());
+  this->write_str(command.c_str());
+}
+
+// Temperature Setpoint
+
+bool SpaNetComponent::request_setpoint_temperature(float target_c) {
+  auto maybe_target_tenths = this->quantize_and_encode_setpoint_(target_c);
+  if (!maybe_target_tenths.has_value()) {
+    ESP_LOGW(TAG, "Rejected invalid/out-of-range setpoint %.2fC", target_c);
+    return false;
+  }
+
+  this->enqueue_command_(QueuedCommand{
+      .kind = CommandKind::kSetpointWrite,
+      .payload = "W40:" + std::to_string(maybe_target_tenths.value()),
+      .expected_ack = std::to_string(maybe_target_tenths.value()),
+      .timeout_ms = SETPOINT_COMMAND_TIMEOUT_MS,
+  });
+  return true;
+}
+
+std::optional<int> SpaNetComponent::quantize_and_encode_setpoint_(float target_c) {
+  if (std::isnan(target_c)) {
+    return std::nullopt;
+  }
+
+  const float quantized_c = std::round(target_c * 5.0f) / 5.0f;
+  if (quantized_c < SETPOINT_MIN_C || quantized_c > SETPOINT_MAX_C) {
+    return std::nullopt;
+  }
+
+  return static_cast<int>(std::lround(quantized_c * 10.0f));
 }
 
 }  // namespace esphome::spanet

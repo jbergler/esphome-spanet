@@ -5,7 +5,7 @@ from esphome.const import CONF_ID
 
 CODEOWNERS = ["@jbergler"]
 DEPENDENCIES = ["uart"]
-AUTO_LOAD = ["text_sensor", "sensor"]
+AUTO_LOAD = ["text_sensor", "sensor", "climate"]
 
 CONF_SPANET_ID = "spanet_id"
 
