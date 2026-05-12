@@ -71,13 +71,16 @@ TEST(RegisterStoreTest, UpdateReturnsTrueForUnknownRegisterLabel) {
 TEST(RegisterStoreTest, UpdateReturnsTrueForValidLine) {
   RegisterStore store;
   EXPECT_TRUE(put_line(store, ",R3,10,20,30,40,50,SW V3.1,SVM1,SN123,SN456,:"));
-  EXPECT_TRUE(put_line(store, "RF:,R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:"));
+  EXPECT_TRUE(put_line(
+      store, "RF:,R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,"
+             "6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:"));
 }
 
 TEST(RegisterStoreTest, StoresTypedRegistersInRegistersStruct) {
   RegisterStore store;
   put_line(store, ",R3,10,20,30,40,50,SW V3.1,SVM1,SN123,SN456,:");
-  put_line(store, ",R4,NORM,0,0,0,2,0,254,4,20,0,0,0,0,0,0,0,262144,3,0,101,0,2022,6,80,50,0,0,5,:");
+  put_line(store, ",R4,NORM,0,0,0,2,0,254,4,20,0,0,0,0,0,0,0,262144,3,0,101,0,"
+                  "2022,6,80,50,0,0,5,:");
 
   const auto &regs = store.get_registers();
   ASSERT_TRUE(regs.r3.has_value());
@@ -89,17 +92,27 @@ TEST(RegisterStoreTest, StoresTypedRegistersInRegistersStruct) {
 TEST(RegisterStoreTest, HandlesCompleteRealRfPayload) {
   RegisterStore store;
 
-  put_line(store, "RF:,R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:");
-  put_line(store, ",R3,10,1,4,4,4,SW V6 21 12 13,SVM1,21460001,20000999,0,1,0,0,0,0,NA,1,0,414,Auto,650,0,7,7,0,0,0,:");
-  put_line(store, ",R4,NORM,0,0,0,2,0,254,4,20,0,0,0,0,0,0,0,262144,3,0,101,0,2022,6,80,50,0,0,5,:");
-  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
-  put_line(store, ",R6,5,3,1,1,5,1,4,390,1,0,3584,5120,31,96,5632,5918,1792,1792,0,30,0,0,0,0,1,5,0,410,:");
-  put_line(store, ",R7,1792,0,1,0,1,0,0,6,2,2023,250,217,238,226,280,125,136,1,0,0,0,23,200,1,0,1,31,50,50,100,5,:");
+  put_line(store,
+           "RF:,R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,"
+           "6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:");
+  put_line(store, ",R3,10,1,4,4,4,SW V6 21 12 "
+                  "13,SVM1,21460001,20000999,0,1,0,0,0,0,NA,1,0,414,Auto,650,0,"
+                  "7,7,0,0,0,:");
+  put_line(store, ",R4,NORM,0,0,0,2,0,254,4,20,0,0,0,0,0,0,0,262144,3,0,101,0,"
+                  "2022,6,80,50,0,0,5,:");
+  put_line(store,
+           ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, ",R6,5,3,1,1,5,1,4,390,1,0,3584,5120,31,96,5632,5918,1792,"
+                  "1792,0,30,0,0,0,0,1,5,0,410,:");
+  put_line(store, ",R7,1792,0,1,0,1,0,0,6,2,2023,250,217,238,226,280,125,136,1,"
+                  "0,0,0,23,200,1,0,1,31,50,50,100,5,:");
   put_line(store, ",R9,F1,1023,5667,5,0,236,9999,455,46,0,255,27516,:");
   put_line(store, ",RA,F2,880,5679,4,0,231,9999,496,47,0,200,380,:");
   put_line(store, ",RB,F3,879,5890,4,0,242,9999,208,46,0,255,380,:");
   put_line(store, ",RC,0,1,1,0,0,0,0,0,0,2,0,0,0,0,:");
-  put_line(store, ",RE,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,-4,13,30,8,5,1,:");
+  put_line(
+      store,
+      ",RE,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,-4,13,30,8,5,1,:");
   put_line(store, ",RG,1,1,1,1,1,1,0-,1-2-0324,1-1-01,0-,0-,0,0,0,1808,:");
 
   const auto &state = store.get_state();
@@ -124,7 +137,8 @@ TEST(RegisterStoreTest, HandlesCompleteRealRfPayload) {
 
 TEST(RegisterStoreTest, ParsesR2DatetimeIntoCurrentTime) {
   RegisterStore store;
-  put_line(store, ",R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:");
+  put_line(store, ",R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,"
+                  "6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:");
 
   const auto &state = store.get_state();
   ASSERT_TRUE(state.controller_status.current_time.has_value());
@@ -133,8 +147,10 @@ TEST(RegisterStoreTest, ParsesR2DatetimeIntoCurrentTime) {
 
 TEST(RegisterStoreTest, ParsesWaterAndSetpointTemperaturesFromR5AndR6) {
   RegisterStore store;
-  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
-  put_line(store, ",R6,5,3,1,1,5,1,4,390,1,0,3584,5120,31,96,5632,5918,1792,1792,0,30,0,0,0,0,1,5,0,410,:");
+  put_line(store,
+           ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, ",R6,5,3,1,1,5,1,4,390,1,0,3584,5120,31,96,5632,5918,1792,"
+                  "1792,0,30,0,0,0,0,1,5,0,410,:");
 
   const auto &state = store.get_state();
   ASSERT_TRUE(state.temperatures.water_c.has_value());
@@ -143,9 +159,30 @@ TEST(RegisterStoreTest, ParsesWaterAndSetpointTemperaturesFromR5AndR6) {
   EXPECT_NEAR(state.temperatures.setpoint_c.value(), 39.0f, 0.01f);
 }
 
+TEST(RegisterStoreTest, ParsesHeatingActiveFromR5HeaterReadback) {
+  RegisterStore store;
+  put_line(store,
+           ",R5,0,1,0,5,0,0,0,0,0,0,1,1,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.climate.heating_active.has_value());
+  EXPECT_TRUE(state.climate.heating_active.value());
+}
+
+TEST(RegisterStoreTest, ParsesHeatingInactiveFromR5HeaterReadback) {
+  RegisterStore store;
+  put_line(store,
+           ",R5,0,1,0,5,0,0,0,0,0,0,0,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.climate.heating_active.has_value());
+  EXPECT_FALSE(state.climate.heating_active.value());
+}
+
 TEST(RegisterStoreTest, ParsesR2TelemetryWithExpectedScaling) {
   RegisterStore store;
-  put_line(store, ",R2,77,240,245,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:");
+  put_line(store, ",R2,77,240,245,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,"
+                  "0,6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:");
 
   const auto &state = store.get_state();
   ASSERT_TRUE(state.power.mains_current_a.has_value());
@@ -160,7 +197,8 @@ TEST(RegisterStoreTest, ParsesR2TelemetryWithExpectedScaling) {
 
 TEST(RegisterStoreTest, ParsesR4PowerTelemetryWithExpectedScaling) {
   RegisterStore store;
-  put_line(store, ",R4,NORM,0,0,0,2,0,254,4,20,24350,12345,0,0,0,0,0,0,262144,3,0,101,0,2022,6,80,50,0,0,5,:");
+  put_line(store, ",R4,NORM,0,0,0,2,0,254,4,20,24350,12345,0,0,0,0,0,0,262144,"
+                  "3,0,101,0,2022,6,80,50,0,0,5,:");
 
   const auto &state = store.get_state();
   ASSERT_TRUE(state.power.instant_power_w.has_value());
@@ -208,7 +246,7 @@ TEST(ControllerStatusIntegrationTest, CurrentTimeEmptyWhenOnlyR3Received) {
   EXPECT_FALSE(state.controller_status.current_time.has_value());
 }
 
-}  // namespace esphome::spanet::tests
+} // namespace esphome::spanet::tests
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

@@ -70,6 +70,11 @@ spanet:
   uart_id: spa_uart
   update_interval: 60s
 
+climate:
+  - platform: spanet
+    spanet_id: spa_hub
+    name: "Temperature"
+
 text_sensor:
   - platform: spanet
     spanet_id: spa_hub

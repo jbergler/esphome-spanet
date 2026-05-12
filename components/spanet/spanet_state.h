@@ -30,10 +30,15 @@ struct PowerStatus {
   std::optional<float> total_energy_kwh;
 };
 
+struct ClimateStatus {
+  std::optional<bool> heating_active;
+};
+
 struct State {
   ControllerStatus controller_status;
   TemperatureStatus temperatures;
   PowerStatus power;
+  ClimateStatus climate;
 };
 
 struct Registers {
@@ -54,25 +59,61 @@ struct Registers {
 };
 
 struct StoreRegisterVisitor {
-  Registers* target;
+  Registers *target;
 
-  bool operator()(const RegisterR2& reg) { target->r2 = reg; return true; }
-  bool operator()(const RegisterR3& reg) { target->r3 = reg; return true; }
-  bool operator()(const RegisterR4& reg) { target->r4 = reg; return true; }
-  bool operator()(const RegisterR5& reg) { target->r5 = reg; return true; }
-  bool operator()(const RegisterR6& reg) { target->r6 = reg; return true; }
-  bool operator()(const RegisterR7& reg) { target->r7 = reg; return true; }
-  bool operator()(const RegisterR9& reg) { target->r9 = reg; return true; }
-  bool operator()(const RegisterRA& reg) { target->ra = reg; return true; }
-  bool operator()(const RegisterRB& reg) { target->rb = reg; return true; }
-  bool operator()(const RegisterRC& reg) { target->rc = reg; return true; }
-  bool operator()(const RegisterRE& reg) { target->re = reg; return true; }
-  bool operator()(const RegisterRG& reg) { target->rg = reg; return true; }
-  bool operator()(const UnknownRegisterLine&) { return true; }
+  bool operator()(const RegisterR2 &reg) {
+    target->r2 = reg;
+    return true;
+  }
+  bool operator()(const RegisterR3 &reg) {
+    target->r3 = reg;
+    return true;
+  }
+  bool operator()(const RegisterR4 &reg) {
+    target->r4 = reg;
+    return true;
+  }
+  bool operator()(const RegisterR5 &reg) {
+    target->r5 = reg;
+    return true;
+  }
+  bool operator()(const RegisterR6 &reg) {
+    target->r6 = reg;
+    return true;
+  }
+  bool operator()(const RegisterR7 &reg) {
+    target->r7 = reg;
+    return true;
+  }
+  bool operator()(const RegisterR9 &reg) {
+    target->r9 = reg;
+    return true;
+  }
+  bool operator()(const RegisterRA &reg) {
+    target->ra = reg;
+    return true;
+  }
+  bool operator()(const RegisterRB &reg) {
+    target->rb = reg;
+    return true;
+  }
+  bool operator()(const RegisterRC &reg) {
+    target->rc = reg;
+    return true;
+  }
+  bool operator()(const RegisterRE &reg) {
+    target->re = reg;
+    return true;
+  }
+  bool operator()(const RegisterRG &reg) {
+    target->rg = reg;
+    return true;
+  }
+  bool operator()(const UnknownRegisterLine &) { return true; }
 };
 
 class RegisterStore {
- public:
+public:
   RegisterStore();
 
   bool update(const std::string &line);
@@ -81,11 +122,11 @@ class RegisterStore {
 
   const Registers &get_registers() const;
 
- private:
+private:
   State state;
   Registers registers_ = {};
 
   void update_controller_status();
 };
 
-}  // namespace esphome::spanet
+} // namespace esphome::spanet

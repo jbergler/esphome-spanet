@@ -6,7 +6,7 @@
 namespace esphome::spanet {
 
 class UartRxBuffer {
- public:
+public:
   explicit UartRxBuffer(size_t max_len = 256) : max_len_(max_len) {}
 
   std::optional<std::string> feed(uint8_t byte) {
@@ -36,9 +36,9 @@ class UartRxBuffer {
 
   bool empty() const { return buffer_.empty(); }
 
- private:
+private:
   std::string buffer_;
   size_t max_len_;
 };
 
-}  // namespace esphome::spanet
+} // namespace esphome::spanet
