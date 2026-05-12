@@ -1,7 +1,10 @@
 #include "spanet_state.h"
 
 #include <algorithm>
+#include <array>
+#include <cctype>
 #include <cstdlib>
+#include <string>
 #include <variant>
 
 namespace esphome::spanet {
@@ -48,12 +51,103 @@ static std::optional<bool> parse_bool_flag(const std::string &raw) {
   return parsed != 0;
 }
 
+static std::optional<int> parse_integer(const std::string &raw) {
+  const char *start = raw.c_str();
+  char *end = nullptr;
+  long parsed = std::strtol(start, &end, 10);
+  if (start == end || *end != '\0') {
+    return std::nullopt;
+  }
+  return static_cast<int>(parsed);
+}
+
+static const std::string &get_rg_install_state(const RegisterRG &rg, size_t pump_index) {
+  switch (pump_index) {
+    case 0:
+      return rg.pump1_install_state;
+    case 1:
+      return rg.pump2_install_state;
+    case 2:
+      return rg.pump3_install_state;
+    case 3:
+      return rg.pump4_install_state;
+    default:
+      return rg.pump5_install_state;
+  }
+}
+
+static const std::string &get_r5_pump_mode(const RegisterR5 &r5, size_t pump_index) {
+  switch (pump_index) {
+    case 0:
+      return r5.status_17;
+    case 1:
+      return r5.status_18;
+    case 2:
+      return r5.status_19;
+    case 3:
+      return r5.status_20;
+    default:
+      return r5.status_21;
+  }
+}
+
+static void parse_pump_install_state(const std::string &raw, PumpStatus *target) {
+  *target = PumpStatus{};
+
+  const size_t first_dash = raw.find('-');
+  const size_t second_dash = raw.rfind('-');
+  if (first_dash == std::string::npos || second_dash == std::string::npos || first_dash == second_dash) {
+    return;
+  }
+
+  const auto installed_part = raw.substr(0, first_dash);
+  const auto speed_type_part = raw.substr(first_dash + 1, second_dash - first_dash - 1);
+  const auto possible_states_part = raw.substr(second_dash + 1);
+
+  target->installed = installed_part == "1";
+
+  auto speed_type = parse_integer(speed_type_part);
+  if (speed_type.has_value()) {
+    target->speed_type = speed_type.value();
+  }
+
+  if (!target->installed || possible_states_part.empty()) {
+    return;
+  }
+
+  std::array<bool, 5> supports_raw_mode{{false, false, false, false, false}};
+  for (char token : possible_states_part) {
+    if (!std::isdigit(static_cast<unsigned char>(token))) {
+      continue;
+    }
+    const int value = token - '0';
+    if (value >= 0 && value <= 4) {
+      supports_raw_mode[static_cast<size_t>(value)] = true;
+    }
+  }
+
+  target->supports_raw_mode = supports_raw_mode;
+  target->supports_auto = supports_raw_mode[4];
+
+  for (size_t raw_mode = 1; raw_mode <= 3; raw_mode++) {
+    if (!supports_raw_mode[raw_mode]) {
+      continue;
+    }
+    target->manual_raw_modes[target->manual_raw_mode_count] = static_cast<int>(raw_mode);
+    target->manual_raw_mode_count++;
+  }
+
+  target->supports_speed = target->manual_raw_mode_count > 1;
+  target->capabilities_valid = true;
+}
+
 RegisterStore::RegisterStore() {
   this->state = State{
       .controller_status = ControllerStatus{},
       .temperatures = TemperatureStatus{},
       .power = PowerStatus{},
       .climate = ClimateStatus{},
+      .pumps = {},
   };
 }
 
@@ -116,6 +210,24 @@ void RegisterStore::update_controller_status() {
     const auto &r4 = this->registers_.r4.value();
     this->state.power.instant_power_w = parse_scaled_float(r4.power, 10.0f);
     this->state.power.total_energy_kwh = parse_scaled_float(r4.power_kwh, 100.0f);
+  }
+
+  for (size_t i = 0; i < this->state.pumps.size(); i++) {
+    if (this->registers_.rg.has_value()) {
+      parse_pump_install_state(get_rg_install_state(this->registers_.rg.value(), i), &this->state.pumps[i]);
+    }
+
+    if (this->registers_.r5.has_value()) {
+      auto maybe_raw_mode = parse_integer(get_r5_pump_mode(this->registers_.r5.value(), i));
+      this->state.pumps[i].current_raw_mode = maybe_raw_mode;
+      if (maybe_raw_mode.has_value()) {
+        this->state.pumps[i].is_on = maybe_raw_mode.value() != 0;
+        this->state.pumps[i].auto_mode_active = maybe_raw_mode.value() == 4;
+      } else {
+        this->state.pumps[i].is_on = false;
+        this->state.pumps[i].auto_mode_active = false;
+      }
+    }
   }
 }
 

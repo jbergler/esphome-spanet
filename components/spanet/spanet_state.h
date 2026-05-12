@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <ctime>
 #include <optional>
 #include <string>
@@ -34,11 +35,27 @@ struct ClimateStatus {
   std::optional<bool> heating_active;
 };
 
+struct PumpStatus {
+  bool installed{false};
+  bool capabilities_valid{false};
+  int speed_type{0};
+  std::array<bool, 5> supports_raw_mode{{false, false, false, false, false}};
+  std::array<int, 3> manual_raw_modes{{0, 0, 0}};
+  size_t manual_raw_mode_count{0};
+  bool supports_speed{false};
+  bool supports_auto{false};
+
+  std::optional<int> current_raw_mode;
+  bool is_on{false};
+  bool auto_mode_active{false};
+};
+
 struct State {
   ControllerStatus controller_status;
   TemperatureStatus temperatures;
   PowerStatus power;
   ClimateStatus climate;
+  std::array<PumpStatus, 5> pumps;
 };
 
 struct Registers {

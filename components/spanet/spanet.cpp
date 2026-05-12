@@ -10,7 +10,7 @@ namespace esphome::spanet {
 static const char *const TAG = "spanet";
 static constexpr const char *const STATE_UPDATE_DEBOUNCE_TIMEOUT = "state_update_debounce";
 static constexpr uint32_t STATE_UPDATE_DEBOUNCE_MS = 250;
-static constexpr uint32_t SETPOINT_COMMAND_TIMEOUT_MS = 1500;
+static constexpr uint32_t COMMAND_TIMEOUT_MS = 1000;
 static constexpr float SETPOINT_MIN_C = 5.0f;
 static constexpr float SETPOINT_MAX_C = 41.0f;
 static constexpr size_t MAX_QUEUED_COMMANDS = 4;
@@ -280,7 +280,40 @@ bool SpaNetComponent::request_setpoint_temperature(float target_c) {
       .kind = CommandKind::kSetpointWrite,
       .payload = "W40:" + std::to_string(maybe_target_tenths.value()),
       .expected_ack = std::to_string(maybe_target_tenths.value()),
-      .timeout_ms = SETPOINT_COMMAND_TIMEOUT_MS,
+      .timeout_ms = COMMAND_TIMEOUT_MS,
+  });
+  return true;
+}
+
+bool SpaNetComponent::request_pump_mode(uint8_t pump_index, int raw_mode) {
+  if (pump_index < 1 || pump_index > 5) {
+    ESP_LOGW(TAG, "Rejected invalid pump index %u", pump_index);
+    return false;
+  }
+
+  if (raw_mode < 0 || raw_mode > 4) {
+    ESP_LOGW(TAG, "Rejected invalid pump mode %d for pump %u", raw_mode, pump_index);
+    return false;
+  }
+
+  const auto &pump = this->register_store_.get_state().pumps[pump_index - 1];
+  if (!pump.installed || !pump.capabilities_valid) {
+    ESP_LOGW(TAG, "Rejected pump%u command while pump is unavailable", pump_index);
+    return false;
+  }
+
+  if (!pump.supports_raw_mode[static_cast<size_t>(raw_mode)]) {
+    ESP_LOGW(TAG, "Rejected unsupported pump%u mode %d", pump_index, raw_mode);
+    return false;
+  }
+
+  const int command_family = 21 + static_cast<int>(pump_index);
+  const std::string command_prefix = "S" + std::to_string(command_family);
+  this->enqueue_command_(QueuedCommand{
+      .kind = CommandKind::kPumpWrite,
+      .payload = command_prefix + ":" + std::to_string(raw_mode),
+      .expected_ack = command_prefix + "-OK",
+      .timeout_ms = COMMAND_TIMEOUT_MS,
   });
   return true;
 }

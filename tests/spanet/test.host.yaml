@@ -56,3 +56,25 @@ climate:
   - platform: spanet
     spanet_id: spa_hub
     name: "SpaNET Climate"
+
+fan:
+  - platform: spanet
+    spanet_id: spa_hub
+    pump: 1
+    name: "SpaNET Pump 1"
+  - platform: spanet
+    spanet_id: spa_hub
+    pump: 2
+    name: "SpaNET Pump 2"
+  - platform: spanet
+    spanet_id: spa_hub
+    pump: 3
+    name: "SpaNET Pump 3"
+  - platform: spanet
+    spanet_id: spa_hub
+    pump: 4
+    name: "SpaNET Pump 4"
+  - platform: spanet
+    spanet_id: spa_hub
+    pump: 5
+    name: "SpaNET Pump 5"

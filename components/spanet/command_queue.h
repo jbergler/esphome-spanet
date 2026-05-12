@@ -22,6 +22,7 @@ namespace esphome::spanet {
 enum class CommandKind {
   kRfPoll,
   kSetpointWrite,
+  kPumpWrite,
 };
 
 struct QueuedCommand {

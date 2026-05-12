@@ -104,3 +104,25 @@ sensor:
       name: "Instant Power"
     total_energy:
       name: "Total Energy"
+
+fan:
+  - platform: spanet
+    spanet_id: spa_hub
+    pump: 1
+    name: "Pump 1"
+  - platform: spanet
+    spanet_id: spa_hub
+    pump: 2
+    name: "Pump 2"
+  - platform: spanet
+    spanet_id: spa_hub
+    pump: 3
+    name: "Pump 3"
+  - platform: spanet
+    spanet_id: spa_hub
+    pump: 4
+    name: "Pump 4"
+  - platform: spanet
+    spanet_id: spa_hub
+    pump: 5
+    name: "Pump 5"
