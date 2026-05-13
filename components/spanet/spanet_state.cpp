@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
-#include <cstdlib>
+#include <charconv>
 #include <string>
 #include <variant>
 
@@ -20,20 +20,18 @@ static std::string normalize_software_version(const std::string &version) {
 }
 
 static std::optional<float> parse_tenths_celsius(const std::string &raw) {
-  const char *start = raw.c_str();
-  char *end = nullptr;
-  long parsed = std::strtol(start, &end, 10);
-  if (start == end || *end != '\0') {
+  long parsed{};
+  auto [ptr, ec] = std::from_chars(raw.data(), raw.data() + raw.size(), parsed);
+  if (ec != std::errc{} || ptr != raw.data() + raw.size()) {
     return std::nullopt;
   }
   return static_cast<float>(parsed) / 10.0f;
 }
 
 static std::optional<float> parse_scaled_float(const std::string &raw, float scale) {
-  const char *start = raw.c_str();
-  char *end = nullptr;
-  long parsed = std::strtol(start, &end, 10);
-  if (start == end || *end != '\0') {
+  long parsed{};
+  auto [ptr, ec] = std::from_chars(raw.data(), raw.data() + raw.size(), parsed);
+  if (ec != std::errc{} || ptr != raw.data() + raw.size()) {
     return std::nullopt;
   }
   return static_cast<float>(parsed) / scale;
@@ -42,23 +40,21 @@ static std::optional<float> parse_scaled_float(const std::string &raw, float sca
 static std::optional<float> parse_integer_float(const std::string &raw) { return parse_scaled_float(raw, 1.0f); }
 
 static std::optional<bool> parse_bool_flag(const std::string &raw) {
-  const char *start = raw.c_str();
-  char *end = nullptr;
-  long parsed = std::strtol(start, &end, 10);
-  if (start == end || *end != '\0') {
+  long parsed{};
+  auto [ptr, ec] = std::from_chars(raw.data(), raw.data() + raw.size(), parsed);
+  if (ec != std::errc{} || ptr != raw.data() + raw.size()) {
     return std::nullopt;
   }
   return parsed != 0;
 }
 
 static std::optional<int> parse_integer(const std::string &raw) {
-  const char *start = raw.c_str();
-  char *end = nullptr;
-  long parsed = std::strtol(start, &end, 10);
-  if (start == end || *end != '\0') {
+  int parsed{};
+  auto [ptr, ec] = std::from_chars(raw.data(), raw.data() + raw.size(), parsed);
+  if (ec != std::errc{} || ptr != raw.data() + raw.size()) {
     return std::nullopt;
   }
-  return static_cast<int>(parsed);
+  return parsed;
 }
 
 static const std::string &get_rg_install_state(const RegisterRG &rg, size_t pump_index) {

@@ -236,10 +236,9 @@ uint8_t SpaNetLight::hue_to_color_index_(uint16_t hue_degrees) {
 }
 
 uint16_t SpaNetLight::color_index_to_hue_(uint8_t color_index) {
-  for (size_t i = 0; i < LIGHT_COLOR_MAP.size(); ++i) {
-    if (LIGHT_COLOR_MAP[i] == color_index) {
-      return i * 15;
-    }
+  auto it = std::find(LIGHT_COLOR_MAP.begin(), LIGHT_COLOR_MAP.end(), color_index);
+  if (it != LIGHT_COLOR_MAP.end()) {
+    return std::distance(LIGHT_COLOR_MAP.begin(), it) * 15;
   }
   return 0;
 }
