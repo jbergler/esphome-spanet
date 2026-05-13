@@ -70,6 +70,57 @@ TEST(CommandQueueTest, TimeoutAdvancesQueue) {
   EXPECT_EQ(writes[1], "RF\n");
 }
 
+TEST(CommandQueueTest, UnmatchedAckKeepsInFlightCommand) {
+  std::vector<std::string> writes;
+  uint32_t now_ms = 100;
+  CommandQueue manager([&](const std::string &payload) { writes.push_back(payload); }, [&]() { return now_ms; }, 8);
+  manager.enqueue(QueuedCommand{
+      .kind = CommandKind::kSetpointWrite,
+      .payload = "W40:390",
+      .expected_ack = "390",
+      .timeout_ms = 1500,
+  });
+  manager.enqueue(QueuedCommand{
+      .kind = CommandKind::kRfPoll,
+      .payload = "RF",
+      .expected_ack = std::nullopt,
+      .timeout_ms = 0,
+  });
+  ASSERT_EQ(writes.size(), 1u);
+  EXPECT_EQ(manager.acknowledge("999", nullptr), AckResult::kUnmatchedAck);
+  ASSERT_EQ(writes.size(), 1u);  // RF not yet sent; in-flight still pending
+}
+
+TEST(CommandQueueTest, TimeoutDoesNotFireBeforeBoundary) {
+  std::vector<std::string> writes;
+  uint32_t now_ms = 100;
+  CommandQueue manager([&](const std::string &payload) { writes.push_back(payload); }, [&]() { return now_ms; }, 8);
+  manager.enqueue(QueuedCommand{
+      .kind = CommandKind::kSetpointWrite,
+      .payload = "W40:390",
+      .expected_ack = "390",
+      .timeout_ms = 500,
+  });
+  now_ms = 599;
+  InFlightCommand timed_out;
+  EXPECT_FALSE(manager.expire_timed_out(now_ms, &timed_out, nullptr));
+}
+
+TEST(CommandQueueTest, ZeroTimeoutNeverExpiresInFlightCommand) {
+  std::vector<std::string> writes;
+  uint32_t now_ms = 100;
+  CommandQueue manager([&](const std::string &payload) { writes.push_back(payload); }, [&]() { return now_ms; }, 8);
+  manager.enqueue(QueuedCommand{
+      .kind = CommandKind::kSetpointWrite,
+      .payload = "W40:390",
+      .expected_ack = "390",
+      .timeout_ms = 0,  // No timeout
+  });
+  now_ms = 10000;
+  InFlightCommand timed_out;
+  EXPECT_FALSE(manager.expire_timed_out(now_ms, &timed_out, nullptr));
+}
+
 }  // namespace esphome::spanet::tests
 
 int main(int argc, char **argv) {
