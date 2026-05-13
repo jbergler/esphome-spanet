@@ -246,6 +246,7 @@ void SpaNetComponent::enqueue_command_(QueuedCommand command) {
   }
 
   const CommandKind kind = command.kind;
+  const std::string payload = command.payload;
   switch (this->command_queue_->enqueue(std::move(command))) {
     case EnqueueResult::kEnqueued:
       return;
@@ -254,7 +255,7 @@ void SpaNetComponent::enqueue_command_(QueuedCommand command) {
       return;
     case EnqueueResult::kDroppedQueueFull:
       ESP_LOGW(TAG, "Dropping command due to full queue (max=%u): cmd=%s", static_cast<unsigned>(MAX_QUEUED_COMMANDS),
-               command.payload.c_str());
+               payload.c_str());
       return;
   }
 }

@@ -1,5 +1,6 @@
 #include "spanet_fan.h"
 
+#include <algorithm>
 #include <cstring>
 
 #include "esphome/core/log.h"
@@ -8,6 +9,10 @@ namespace esphome::spanet {
 
 static const char *const TAG = "spanet.fan";
 static const char *const AUTO_PRESET = "auto";
+
+static size_t manual_mode_count_limit(const PumpStatus &pump) {
+  return std::min(pump.manual_raw_mode_count, pump.manual_raw_modes.size());
+}
 
 void SpaNetPumpFan::setup() {
   this->parent_->add_on_state_callback([this](const State &state) { this->handle_state_update_(state); });
@@ -25,9 +30,10 @@ fan::FanTraits SpaNetPumpFan::get_traits() {
   traits.set_direction(false);
 
   const auto &pump = this->parent_->get_state().pumps[this->pump_index_ - 1];
+  const size_t manual_mode_count = manual_mode_count_limit(pump);
   if (pump.installed && pump.capabilities_valid && pump.supports_speed) {
     traits.set_speed(true);
-    traits.set_supported_speed_count(static_cast<int>(pump.manual_raw_mode_count));
+    traits.set_supported_speed_count(static_cast<int>(manual_mode_count));
   } else {
     traits.set_speed(false);
     traits.set_supported_speed_count(1);
@@ -45,6 +51,7 @@ void SpaNetPumpFan::control(const fan::FanCall &call) {
   }
 
   int next_raw_mode = pump.current_raw_mode.value_or(0);
+  const size_t manual_mode_count = manual_mode_count_limit(pump);
 
   if (call.get_state().has_value() && !call.get_state().value()) {
     next_raw_mode = 0;
@@ -56,7 +63,7 @@ void SpaNetPumpFan::control(const fan::FanCall &call) {
     next_raw_mode = 4;
   } else if (call.get_speed().has_value()) {
     const int requested_speed = call.get_speed().value();
-    if (pump.manual_raw_mode_count == 0) {
+    if (manual_mode_count == 0) {
       ESP_LOGW(TAG, "Ignoring speed command without manual speeds for pump %u", this->pump_index_);
       return;
     }
@@ -71,14 +78,14 @@ void SpaNetPumpFan::control(const fan::FanCall &call) {
       if (clamped_speed < 1) {
         clamped_speed = 1;
       }
-      if (clamped_speed > static_cast<int>(pump.manual_raw_mode_count)) {
-        clamped_speed = static_cast<int>(pump.manual_raw_mode_count);
+      if (clamped_speed > static_cast<int>(manual_mode_count)) {
+        clamped_speed = static_cast<int>(manual_mode_count);
       }
       next_raw_mode = pump.manual_raw_modes[static_cast<size_t>(clamped_speed - 1)];
     }
   } else if (call.get_state().has_value() && call.get_state().value()) {
-    if (pump.manual_raw_mode_count > 0) {
-      next_raw_mode = pump.manual_raw_modes[static_cast<size_t>(pump.manual_raw_mode_count - 1)];
+    if (manual_mode_count > 0) {
+      next_raw_mode = pump.manual_raw_modes[manual_mode_count - 1];
     } else if (pump.supports_auto) {
       next_raw_mode = 4;
     } else {
@@ -100,7 +107,8 @@ int SpaNetPumpFan::resolve_manual_speed_(const PumpStatus &pump) const {
   // Reverse lookup of the same RG-declared manual mode order used for command
   // writes. This keeps published speed values aligned with the UI mapping.
   const int raw_mode = pump.current_raw_mode.value();
-  for (size_t i = 0; i < pump.manual_raw_mode_count; i++) {
+  const size_t manual_mode_count = manual_mode_count_limit(pump);
+  for (size_t i = 0; i < manual_mode_count; i++) {
     if (pump.manual_raw_modes[i] == raw_mode) {
       return static_cast<int>(i + 1);
     }
@@ -136,8 +144,9 @@ void SpaNetPumpFan::handle_state_update_(const State &state) {
   int next_speed = 0;
   if (next_state) {
     next_speed = this->resolve_manual_speed_(pump);
-    if (next_speed == 0 && pump.manual_raw_mode_count > 0) {
-      next_speed = static_cast<int>(pump.manual_raw_mode_count);
+    const size_t manual_mode_count = manual_mode_count_limit(pump);
+    if (next_speed == 0 && manual_mode_count > 0) {
+      next_speed = static_cast<int>(manual_mode_count);
     }
   }
 

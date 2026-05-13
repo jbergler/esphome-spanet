@@ -9,8 +9,8 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <deque>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -71,24 +71,31 @@ class CommandQueue {
   SendFn send_fn_;
   NowMsFn now_ms_fn_;
   size_t max_queued_commands_;
-
-  std::deque<QueuedCommand> command_queue_;
+  std::unique_ptr<QueuedCommand[]> queue_storage_;
+  size_t queue_head_{0};
+  size_t queue_size_{0};
   std::optional<InFlightCommand> in_flight_command_;
 };
 
 inline CommandQueue::CommandQueue(SendFn send_fn, NowMsFn now_ms_fn, size_t max_queued_commands)
-    : send_fn_(std::move(send_fn)), now_ms_fn_(std::move(now_ms_fn)), max_queued_commands_(max_queued_commands) {}
+    : send_fn_(std::move(send_fn)), now_ms_fn_(std::move(now_ms_fn)), max_queued_commands_(max_queued_commands) {
+  if (this->max_queued_commands_ > 0) {
+    this->queue_storage_ = std::make_unique<QueuedCommand[]>(this->max_queued_commands_);
+  }
+}
 
 inline EnqueueResult CommandQueue::enqueue(QueuedCommand command) {
   if (command.kind == CommandKind::kRfPoll && this->has_pending_kind(CommandKind::kRfPoll)) {
     return EnqueueResult::kDroppedDuplicateRfPoll;
   }
 
-  if (this->command_queue_.size() >= this->max_queued_commands_) {
+  if (this->queue_size_ >= this->max_queued_commands_) {
     return EnqueueResult::kDroppedQueueFull;
   }
 
-  this->command_queue_.push_back(std::move(command));
+  const size_t tail = (this->queue_head_ + this->queue_size_) % this->max_queued_commands_;
+  this->queue_storage_[tail] = std::move(command);
+  this->queue_size_++;
   this->maybe_send_next_();
   return EnqueueResult::kEnqueued;
 }
@@ -144,7 +151,9 @@ inline bool CommandQueue::has_pending_kind(CommandKind kind) const {
     return true;
   }
 
-  for (const auto &command : this->command_queue_) {
+  for (size_t i = 0; i < this->queue_size_; i++) {
+    const size_t index = (this->queue_head_ + i) % this->max_queued_commands_;
+    const auto &command = this->queue_storage_[index];
     if (command.kind == kind) {
       return true;
     }
@@ -158,9 +167,10 @@ inline void CommandQueue::maybe_send_next_() {
     return;
   }
 
-  while (!this->command_queue_.empty()) {
-    auto next = this->command_queue_.front();
-    this->command_queue_.pop_front();
+  while (this->queue_size_ > 0) {
+    auto next = std::move(this->queue_storage_[this->queue_head_]);
+    this->queue_head_ = (this->queue_head_ + 1) % this->max_queued_commands_;
+    this->queue_size_--;
 
     this->send_fn_(next.payload + "\n");
 

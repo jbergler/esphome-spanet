@@ -264,6 +264,18 @@ TEST(RegisterStoreTest, TreatsMalformedPumpInstallStateAsUnavailable) {
   EXPECT_TRUE(state.pumps[1].capabilities_valid);
 }
 
+TEST(RegisterStoreTest, ManualModeCountIsBoundedByStorageSize) {
+  RegisterStore store;
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,0,0,1,0,392,0,0,0,3,0,0,0,1,2,6,6,:");
+  put_line(store, ",RG,1,1,1,1,1,1,1-2-123443211234X,0-,0-,0-,0-,0,0,0,1808,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.pumps[0].installed);
+  ASSERT_TRUE(state.pumps[0].capabilities_valid);
+  EXPECT_LE(state.pumps[0].manual_raw_mode_count, state.pumps[0].manual_raw_modes.size());
+  EXPECT_EQ(state.pumps[0].manual_raw_mode_count, 3u);
+}
+
 TEST(ControllerStatusIntegrationTest, ParsesFullExamplePayloadFromFile) {
   std::ifstream file("tests/data/example-1.txt");
   ASSERT_TRUE(file.is_open()) << "Could not open tests/data/example-1.txt";
