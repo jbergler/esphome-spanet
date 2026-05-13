@@ -14,7 +14,7 @@ TEST(CommandQueueTest, AckedCommandBlocksQueueUntilAck) {
 
   CommandQueue manager([&](const std::string &payload) { writes.push_back(payload); }, [&]() { return now_ms; }, 8);
 
-  EXPECT_EQ(manager.enqueue(QueuedCommand{
+  EXPECT_EQ(manager.enqueue(Command{
                 .kind = CommandKind::kSetpointWrite,
                 .payload = "W40:390",
                 .expected_ack = "390",
@@ -22,7 +22,7 @@ TEST(CommandQueueTest, AckedCommandBlocksQueueUntilAck) {
             }),
             EnqueueResult::kEnqueued);
 
-  EXPECT_EQ(manager.enqueue(QueuedCommand{
+  EXPECT_EQ(manager.enqueue(Command{
                 .kind = CommandKind::kRfPoll,
                 .payload = "RF",
                 .expected_ack = std::nullopt,
@@ -46,13 +46,13 @@ TEST(CommandQueueTest, TimeoutAdvancesQueue) {
 
   CommandQueue manager([&](const std::string &payload) { writes.push_back(payload); }, [&]() { return now_ms; }, 8);
 
-  manager.enqueue(QueuedCommand{
+  manager.enqueue(Command{
       .kind = CommandKind::kSetpointWrite,
       .payload = "W40:390",
       .expected_ack = "390",
       .timeout_ms = 500,
   });
-  manager.enqueue(QueuedCommand{
+  manager.enqueue(Command{
       .kind = CommandKind::kRfPoll,
       .payload = "RF",
       .expected_ack = std::nullopt,
@@ -64,7 +64,7 @@ TEST(CommandQueueTest, TimeoutAdvancesQueue) {
   uint32_t age_ms = 0;
   EXPECT_TRUE(manager.expire_timed_out(now_ms, &timed_out, &age_ms));
   EXPECT_EQ(age_ms, 500u);
-  EXPECT_EQ(timed_out.kind, CommandKind::kSetpointWrite);
+  EXPECT_EQ(timed_out.command.kind, CommandKind::kSetpointWrite);
 
   ASSERT_EQ(writes.size(), 2u);
   EXPECT_EQ(writes[1], "RF\n");
@@ -74,13 +74,13 @@ TEST(CommandQueueTest, UnmatchedAckKeepsInFlightCommand) {
   std::vector<std::string> writes;
   uint32_t now_ms = 100;
   CommandQueue manager([&](const std::string &payload) { writes.push_back(payload); }, [&]() { return now_ms; }, 8);
-  manager.enqueue(QueuedCommand{
+  manager.enqueue(Command{
       .kind = CommandKind::kSetpointWrite,
       .payload = "W40:390",
       .expected_ack = "390",
       .timeout_ms = 1500,
   });
-  manager.enqueue(QueuedCommand{
+  manager.enqueue(Command{
       .kind = CommandKind::kRfPoll,
       .payload = "RF",
       .expected_ack = std::nullopt,
@@ -97,7 +97,7 @@ TEST(CommandQueueTest, LightColorAckAdvancesQueue) {
 
   CommandQueue manager([&](const std::string &payload) { writes.push_back(payload); }, [&]() { return now_ms; }, 8);
 
-  EXPECT_EQ(manager.enqueue(QueuedCommand{
+  EXPECT_EQ(manager.enqueue(Command{
                 .kind = CommandKind::kLightColor,
                 .payload = "S10:12",
                 .expected_ack = "12",
@@ -105,7 +105,7 @@ TEST(CommandQueueTest, LightColorAckAdvancesQueue) {
             }),
             EnqueueResult::kEnqueued);
 
-  EXPECT_EQ(manager.enqueue(QueuedCommand{
+  EXPECT_EQ(manager.enqueue(Command{
                 .kind = CommandKind::kRfPoll,
                 .payload = "RF",
                 .expected_ack = std::nullopt,
@@ -118,7 +118,7 @@ TEST(CommandQueueTest, LightColorAckAdvancesQueue) {
 
   InFlightCommand matched;
   EXPECT_EQ(manager.acknowledge("12", &matched), AckResult::kMatched);
-  EXPECT_EQ(matched.kind, CommandKind::kLightColor);
+  EXPECT_EQ(matched.command.kind, CommandKind::kLightColor);
 
   ASSERT_EQ(writes.size(), 2u);
   EXPECT_EQ(writes[1], "RF\n");
@@ -128,7 +128,7 @@ TEST(CommandQueueTest, TimeoutDoesNotFireBeforeBoundary) {
   std::vector<std::string> writes;
   uint32_t now_ms = 100;
   CommandQueue manager([&](const std::string &payload) { writes.push_back(payload); }, [&]() { return now_ms; }, 8);
-  manager.enqueue(QueuedCommand{
+  manager.enqueue(Command{
       .kind = CommandKind::kSetpointWrite,
       .payload = "W40:390",
       .expected_ack = "390",
@@ -143,7 +143,7 @@ TEST(CommandQueueTest, ZeroTimeoutNeverExpiresInFlightCommand) {
   std::vector<std::string> writes;
   uint32_t now_ms = 100;
   CommandQueue manager([&](const std::string &payload) { writes.push_back(payload); }, [&]() { return now_ms; }, 8);
-  manager.enqueue(QueuedCommand{
+  manager.enqueue(Command{
       .kind = CommandKind::kSetpointWrite,
       .payload = "W40:390",
       .expected_ack = "390",

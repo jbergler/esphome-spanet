@@ -57,11 +57,12 @@ bool SpaNetLightEffectSelect::request_light_effect_mode_(uint8_t mode) {
     return false;
   }
   const std::string mode_str = std::to_string(mode);
-  this->parent_->enqueue_command_(QueuedCommand{
+  this->parent_->enqueue_command_(Command{
       .kind = CommandKind::kLightEffectMode,
       .payload = "S07:" + mode_str,
       .expected_ack = mode_str,
       .timeout_ms = COMMAND_TIMEOUT_MS,
+      .triggers_rf_poll = true,
   });
   return true;
 }

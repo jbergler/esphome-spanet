@@ -186,11 +186,12 @@ void SpaNetLight::hsv_to_rgb_(uint16_t hue_degrees, float saturation, float *red
 }
 
 bool SpaNetLight::request_light_toggle_(bool desired_state) {
-  this->parent_->enqueue_command_(QueuedCommand{
+  this->parent_->enqueue_command_(Command{
       .kind = CommandKind::kLightToggle,
       .payload = "W14",
       .expected_ack = "W14",
       .timeout_ms = COMMAND_TIMEOUT_MS,
+      .triggers_rf_poll = true,
   });
   return true;
 }
@@ -198,11 +199,12 @@ bool SpaNetLight::request_light_toggle_(bool desired_state) {
 bool SpaNetLight::request_light_brightness_(uint8_t esphome_brightness) {
   uint8_t device_brightness = esphome_brightness_to_device_(esphome_brightness);
   const std::string device_brightness_str = std::to_string(device_brightness);
-  this->parent_->enqueue_command_(QueuedCommand{
+  this->parent_->enqueue_command_(Command{
       .kind = CommandKind::kLightBrightness,
       .payload = "S08:" + device_brightness_str,
       .expected_ack = device_brightness_str,
       .timeout_ms = COMMAND_TIMEOUT_MS,
+      .triggers_rf_poll = true,
   });
   return true;
 }
@@ -210,11 +212,12 @@ bool SpaNetLight::request_light_brightness_(uint8_t esphome_brightness) {
 bool SpaNetLight::request_light_color_(uint16_t hue_degrees) {
   uint8_t color_index = hue_to_color_index_(hue_degrees);
   const std::string color_index_str = std::to_string(color_index);
-  this->parent_->enqueue_command_(QueuedCommand{
+  this->parent_->enqueue_command_(Command{
       .kind = CommandKind::kLightColor,
       .payload = "S10:" + color_index_str,
       .expected_ack = color_index_str,
       .timeout_ms = COMMAND_TIMEOUT_MS,
+      .triggers_rf_poll = true,
   });
   return true;
 }

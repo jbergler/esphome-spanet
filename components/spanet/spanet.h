@@ -37,7 +37,7 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   void set_total_energy_sensor(sensor::Sensor *sensor) { this->sen_total_energy_ = sensor; }
   void add_on_state_callback(StateUpdateCallback callback) { this->state_callbacks_.push_back(std::move(callback)); }
   const State &get_state() const { return this->register_store_.get_state(); }
-  void enqueue_command_(QueuedCommand command);
+  void enqueue_command_(Command command);
 
   void setup() override;
   void loop() override;

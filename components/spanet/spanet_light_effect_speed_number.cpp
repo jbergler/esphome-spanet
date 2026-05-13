@@ -46,11 +46,12 @@ bool SpaNetLightEffectSpeedNumber::request_light_effect_speed_(uint8_t speed) {
     return false;
   }
   const std::string speed_str = std::to_string(speed);
-  this->parent_->enqueue_command_(QueuedCommand{
+  this->parent_->enqueue_command_(Command{
       .kind = CommandKind::kLightEffectSpeed,
       .payload = "S09:" + speed_str,
       .expected_ack = speed_str,
       .timeout_ms = COMMAND_TIMEOUT_MS,
+      .triggers_rf_poll = true,
   });
   return true;
 }

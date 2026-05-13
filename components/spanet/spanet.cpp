@@ -76,15 +76,13 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
       ESP_LOGV(TAG, "Message '%s' did not match expected ack for in-flight command", message.c_str());
       break;
     case AckResult::kMatched:
-      if (matched_command.kind == CommandKind::kSetpointWrite || matched_command.kind == CommandKind::kPumpWrite ||
-          matched_command.kind == CommandKind::kLightToggle || matched_command.kind == CommandKind::kLightBrightness ||
-          matched_command.kind == CommandKind::kLightColor || matched_command.kind == CommandKind::kLightEffectMode ||
-          matched_command.kind == CommandKind::kLightEffectSpeed) {
-        this->enqueue_command_(QueuedCommand{
+      if (matched_command.command.triggers_rf_poll) {
+        this->enqueue_command_(Command{
             .kind = CommandKind::kRfPoll,
             .payload = "RF",
             .expected_ack = "RF:",
             .timeout_ms = 500,
+            .triggers_rf_poll = false,
         });
       }
       return;
@@ -118,11 +116,12 @@ void SpaNetComponent::on_state_update_message_(const std::string &message) {
 
 void SpaNetComponent::update() {
   ESP_LOGV(TAG, "Polling for state");
-  this->enqueue_command_(QueuedCommand{
+  this->enqueue_command_(Command{
       .kind = CommandKind::kRfPoll,
       .payload = "RF",
       .expected_ack = "RF:",
       .timeout_ms = 500,
+      .triggers_rf_poll = false,
   });
 }
 
@@ -170,7 +169,7 @@ void SpaNetComponent::dump_config() {
   }
 }
 
-void SpaNetComponent::enqueue_command_(QueuedCommand command) {
+void SpaNetComponent::enqueue_command_(Command command) {
   if (this->command_queue_ == nullptr) {
     return;
   }
@@ -201,7 +200,7 @@ void SpaNetComponent::process_command_timeouts_(uint32_t now_ms) {
     return;
   }
 
-  ESP_LOGW(TAG, "Command timed out after %u ms: payload=%s", age_ms, timed_out_command.payload.c_str());
+  ESP_LOGW(TAG, "Command timed out after %u ms: payload=%s", age_ms, timed_out_command.command.payload.c_str());
 }
 
 void SpaNetComponent::send_uart_command_(const std::string &command) {

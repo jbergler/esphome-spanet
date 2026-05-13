@@ -206,11 +206,12 @@ bool SpaNetPumpFan::request_pump_mode_(int raw_mode) {
 
   const int command_family = 21 + static_cast<int>(this->pump_index_);
   const std::string command_prefix = "S" + std::to_string(command_family);
-  this->parent_->enqueue_command_(QueuedCommand{
+  this->parent_->enqueue_command_(Command{
       .kind = CommandKind::kPumpWrite,
       .payload = command_prefix + ":" + std::to_string(command_mode),
       .expected_ack = command_prefix + "-OK",
       .timeout_ms = COMMAND_TIMEOUT_MS,
+      .triggers_rf_poll = true,
   });
   return true;
 }
