@@ -51,6 +51,23 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   void process_command_timeouts_(uint32_t now_ms);
   virtual void send_uart_command_(const std::string &command);
 
+  // Publish text sensor if value changed
+  template<typename T> void publish_text_sensor_if_changed_(text_sensor::TextSensor *sensor, const T &value) {
+    if (sensor != nullptr && !value.empty() && sensor->get_raw_state() != value) {
+      sensor->publish_state(value);
+    }
+  }
+
+  // Publish float sensor if optional has value and differs from current state (or state is NaN)
+  template<typename T> void publish_float_sensor_if_changed_(sensor::Sensor *sensor, const T &optional_value) {
+    if (sensor != nullptr && optional_value.has_value()) {
+      const float next_value = optional_value.value();
+      if (std::isnan(sensor->state) || sensor->state != next_value) {
+        sensor->publish_state(next_value);
+      }
+    }
+  }
+
   text_sensor::TextSensor *sen_controller_model_{nullptr};
   text_sensor::TextSensor *sen_controller_serial_{nullptr};
   text_sensor::TextSensor *sen_controller_fw_version_{nullptr};

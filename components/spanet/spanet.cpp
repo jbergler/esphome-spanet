@@ -10,7 +10,7 @@ static constexpr uint32_t STATE_UPDATE_DEBOUNCE_MS = 250;
 static constexpr size_t MAX_QUEUED_COMMANDS = 4;
 
 void SpaNetComponent::setup() {
-  ESP_LOGI(TAG, "Setting up dummy SpaNET component");
+  ESP_LOGI(TAG, "Configuring SpaNET component");
   this->check_uart_settings(38400);
 
   this->command_queue_ =
@@ -22,79 +22,22 @@ void SpaNetComponent::setup() {
     const auto &temperatures = state.temperatures;
     const auto &power = state.power;
 
-    if (this->sen_controller_model_ != nullptr && !state.controller_status.model.empty()) {
-      if (this->sen_controller_model_->get_raw_state() != controller.model) {
-        this->sen_controller_model_->publish_state(controller.model);
-      }
-    }
+    // Controller information
+    this->publish_text_sensor_if_changed_(this->sen_controller_model_, controller.model);
+    this->publish_text_sensor_if_changed_(this->sen_controller_fw_version_, controller.software_version);
+    this->publish_text_sensor_if_changed_(this->sen_controller_serial_, controller.serial_number);
 
-    if (this->sen_controller_fw_version_ != nullptr && !controller.software_version.empty()) {
-      if (this->sen_controller_fw_version_->get_raw_state() != controller.software_version) {
-        this->sen_controller_fw_version_->publish_state(controller.software_version);
-      }
-    }
+    // Temperatures
+    this->publish_float_sensor_if_changed_(this->sen_water_temperature_, temperatures.water_c);
+    this->publish_float_sensor_if_changed_(this->sen_setpoint_temperature_, temperatures.setpoint_c);
+    this->publish_float_sensor_if_changed_(this->sen_heater_temperature_, temperatures.heater_c);
+    this->publish_float_sensor_if_changed_(this->sen_case_temperature_, temperatures.case_c);
 
-    if (this->sen_controller_serial_ != nullptr && !controller.serial_number.empty()) {
-      if (this->sen_controller_serial_->get_raw_state() != controller.serial_number) {
-        this->sen_controller_serial_->publish_state(controller.serial_number);
-      }
-    }
-
-    if (this->sen_water_temperature_ != nullptr && temperatures.water_c.has_value()) {
-      const float next_value = temperatures.water_c.value();
-      if (std::isnan(this->sen_water_temperature_->state) || this->sen_water_temperature_->state != next_value) {
-        this->sen_water_temperature_->publish_state(next_value);
-      }
-    }
-
-    if (this->sen_setpoint_temperature_ != nullptr && temperatures.setpoint_c.has_value()) {
-      const float next_value = temperatures.setpoint_c.value();
-      if (std::isnan(this->sen_setpoint_temperature_->state) || this->sen_setpoint_temperature_->state != next_value) {
-        this->sen_setpoint_temperature_->publish_state(next_value);
-      }
-    }
-
-    if (this->sen_heater_temperature_ != nullptr && temperatures.heater_c.has_value()) {
-      const float next_value = temperatures.heater_c.value();
-      if (std::isnan(this->sen_heater_temperature_->state) || this->sen_heater_temperature_->state != next_value) {
-        this->sen_heater_temperature_->publish_state(next_value);
-      }
-    }
-
-    if (this->sen_case_temperature_ != nullptr && temperatures.case_c.has_value()) {
-      const float next_value = temperatures.case_c.value();
-      if (std::isnan(this->sen_case_temperature_->state) || this->sen_case_temperature_->state != next_value) {
-        this->sen_case_temperature_->publish_state(next_value);
-      }
-    }
-
-    if (this->sen_mains_voltage_ != nullptr && power.mains_voltage_v.has_value()) {
-      const float next_value = power.mains_voltage_v.value();
-      if (std::isnan(this->sen_mains_voltage_->state) || this->sen_mains_voltage_->state != next_value) {
-        this->sen_mains_voltage_->publish_state(next_value);
-      }
-    }
-
-    if (this->sen_mains_current_ != nullptr && power.mains_current_a.has_value()) {
-      const float next_value = power.mains_current_a.value();
-      if (std::isnan(this->sen_mains_current_->state) || this->sen_mains_current_->state != next_value) {
-        this->sen_mains_current_->publish_state(next_value);
-      }
-    }
-
-    if (this->sen_instant_power_ != nullptr && power.instant_power_w.has_value()) {
-      const float next_value = power.instant_power_w.value();
-      if (std::isnan(this->sen_instant_power_->state) || this->sen_instant_power_->state != next_value) {
-        this->sen_instant_power_->publish_state(next_value);
-      }
-    }
-
-    if (this->sen_total_energy_ != nullptr && power.total_energy_kwh.has_value()) {
-      const float next_value = power.total_energy_kwh.value();
-      if (std::isnan(this->sen_total_energy_->state) || this->sen_total_energy_->state != next_value) {
-        this->sen_total_energy_->publish_state(next_value);
-      }
-    }
+    // Power
+    this->publish_float_sensor_if_changed_(this->sen_mains_voltage_, power.mains_voltage_v);
+    this->publish_float_sensor_if_changed_(this->sen_mains_current_, power.mains_current_a);
+    this->publish_float_sensor_if_changed_(this->sen_instant_power_, power.instant_power_w);
+    this->publish_float_sensor_if_changed_(this->sen_total_energy_, power.total_energy_kwh);
   });
 
   // Trigger an initial poll immediately; PollingComponent handles recurring
