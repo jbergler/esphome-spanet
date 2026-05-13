@@ -91,6 +91,39 @@ TEST(CommandQueueTest, UnmatchedAckKeepsInFlightCommand) {
   ASSERT_EQ(writes.size(), 1u);  // RF not yet sent; in-flight still pending
 }
 
+TEST(CommandQueueTest, LightColorAckAdvancesQueue) {
+  std::vector<std::string> writes;
+  uint32_t now_ms = 100;
+
+  CommandQueue manager([&](const std::string &payload) { writes.push_back(payload); }, [&]() { return now_ms; }, 8);
+
+  EXPECT_EQ(manager.enqueue(QueuedCommand{
+                .kind = CommandKind::kLightColor,
+                .payload = "S10:12",
+                .expected_ack = "12",
+                .timeout_ms = 1500,
+            }),
+            EnqueueResult::kEnqueued);
+
+  EXPECT_EQ(manager.enqueue(QueuedCommand{
+                .kind = CommandKind::kRfPoll,
+                .payload = "RF",
+                .expected_ack = std::nullopt,
+                .timeout_ms = 0,
+            }),
+            EnqueueResult::kEnqueued);
+
+  ASSERT_EQ(writes.size(), 1u);
+  EXPECT_EQ(writes[0], "S10:12\n");
+
+  InFlightCommand matched;
+  EXPECT_EQ(manager.acknowledge("12", &matched), AckResult::kMatched);
+  EXPECT_EQ(matched.kind, CommandKind::kLightColor);
+
+  ASSERT_EQ(writes.size(), 2u);
+  EXPECT_EQ(writes[1], "RF\n");
+}
+
 TEST(CommandQueueTest, TimeoutDoesNotFireBeforeBoundary) {
   std::vector<std::string> writes;
   uint32_t now_ms = 100;

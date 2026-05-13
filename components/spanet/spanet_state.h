@@ -35,6 +35,14 @@ struct ClimateStatus {
   std::optional<bool> heating_active;
 };
 
+struct LightStatus {
+  bool is_on{false};
+  uint8_t brightness{1};    // Device scale: 1-5
+  uint8_t color_index{0};   // Device scale: 0-31
+  uint8_t effect_mode{0};   // Device scale: 0-4 (white/colour/step/fade/party)
+  uint8_t effect_speed{1};  // Device scale: 1-5
+};
+
 struct PumpStatus {
   bool installed{false};
   bool capabilities_valid{false};
@@ -55,6 +63,7 @@ struct State {
   TemperatureStatus temperatures;
   PowerStatus power;
   ClimateStatus climate;
+  LightStatus light;
   std::array<PumpStatus, 5> pumps;
 };
 

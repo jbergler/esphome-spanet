@@ -158,6 +158,7 @@ RegisterStore::RegisterStore() {
       .temperatures = TemperatureStatus{},
       .power = PowerStatus{},
       .climate = ClimateStatus{},
+      .light = LightStatus{},
       .pumps = {},
   };
 }
@@ -215,6 +216,50 @@ void RegisterStore::update_controller_status() {
   if (this->registers_.r6.has_value()) {
     const auto &r6 = this->registers_.r6.value();
     this->state.temperatures.setpoint_c = parse_tenths_celsius(r6.set_temperature);
+  }
+
+  // Parse light status from R5[14] (status_13) and R6 fields
+  if (this->registers_.r5.has_value() && this->registers_.r6.has_value()) {
+    const auto &r5 = this->registers_.r5.value();
+    const auto &r6 = this->registers_.r6.value();
+
+    // R5[14] (status_13) = rb_tp_light (light on/off)
+    auto light_on = parse_bool_flag(r5.status_13);
+    if (light_on.has_value()) {
+      this->state.light.is_on = light_on.value();
+    }
+
+    // R6[2] (brightness) = 1-5 device scale
+    auto brightness = parse_integer(r6.brightness);
+    if (brightness.has_value() && brightness.value() >= 1 && brightness.value() <= 5) {
+      this->state.light.brightness = static_cast<uint8_t>(brightness.value());
+    } else {
+      this->state.light.brightness = 1;
+    }
+
+    // R6[3] (current_color) = 0-31 color index
+    auto color_index = parse_integer(r6.current_color);
+    if (color_index.has_value() && color_index.value() >= 0 && color_index.value() <= 31) {
+      this->state.light.color_index = static_cast<uint8_t>(color_index.value());
+    } else {
+      this->state.light.color_index = 0;
+    }
+
+    // R6[4] (color_mode) = 0-4 (white/colour/step/fade/party)
+    auto effect_mode = parse_integer(r6.color_mode);
+    if (effect_mode.has_value() && effect_mode.value() >= 0 && effect_mode.value() <= 4) {
+      this->state.light.effect_mode = static_cast<uint8_t>(effect_mode.value());
+    } else {
+      this->state.light.effect_mode = 0;
+    }
+
+    // R6[5] (light_effect_speed) = 1-5 device scale
+    auto speed = parse_integer(r6.light_effect_speed);
+    if (speed.has_value() && speed.value() >= 1 && speed.value() <= 5) {
+      this->state.light.effect_speed = static_cast<uint8_t>(speed.value());
+    } else {
+      this->state.light.effect_speed = 1;
+    }
   }
 
   if (this->registers_.r4.has_value()) {

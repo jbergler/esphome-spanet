@@ -126,3 +126,18 @@ fan:
     spanet_id: spa_hub
     pump: 5
     name: "Pump 5"
+
+light:
+  - platform: spanet
+    spanet_id: spa_hub
+    name: "Light"
+
+select:
+  - platform: spanet
+    spanet_id: spa_hub
+    name: "Light Effect"
+
+number:
+  - platform: spanet
+    spanet_id: spa_hub
+    name: "Light Effect Speed"

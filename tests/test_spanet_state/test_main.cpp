@@ -151,6 +151,57 @@ TEST(RegisterStoreTest, ParsesWaterAndSetpointTemperaturesFromR5AndR6) {
   EXPECT_NEAR(state.temperatures.setpoint_c.value(), 39.0f, 0.01f);
 }
 
+TEST(RegisterStoreTest, ParsesLightStatusFromR5AndR6) {
+  RegisterStore store;
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, ",R6,5,3,1,1,5,1,4,390,1,0,3584,5120,31,96,5632,5918,1792,"
+                  "1792,0,30,0,0,0,0,1,5,0,410,:");
+
+  const auto &state = store.get_state();
+  EXPECT_FALSE(state.light.is_on);
+  EXPECT_EQ(state.light.brightness, 3);
+  EXPECT_EQ(state.light.color_index, 1);
+  EXPECT_EQ(state.light.effect_mode, 1);
+  EXPECT_EQ(state.light.effect_speed, 5);
+}
+
+TEST(RegisterStoreTest, ClampsOutOfRangeLightStatusToDefaults) {
+  RegisterStore store;
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,0,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, ",R6,5,9,99,8,0,1,4,390,1,0,3584,5120,31,96,5632,5918,1792,"
+                  "1792,0,30,0,0,0,0,1,5,0,410,:");
+
+  const auto &state = store.get_state();
+  EXPECT_FALSE(state.light.is_on);
+  EXPECT_EQ(state.light.brightness, 1);
+  EXPECT_EQ(state.light.color_index, 0);
+  EXPECT_EQ(state.light.effect_mode, 0);
+  EXPECT_EQ(state.light.effect_speed, 1);
+}
+
+TEST(RegisterStoreTest, LightOnOffFollowsPollFlagWithoutInference) {
+  RegisterStore store;
+
+  // First poll reports light on.
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,1,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, ",R6,5,5,31,1,5,1,4,390,1,0,3584,5120,31,96,5632,5918,1792,"
+                  "1792,0,30,0,0,0,0,1,5,0,410,:");
+  EXPECT_TRUE(store.get_state().light.is_on);
+
+  // Next poll reports light off while other light fields remain non-zero.
+  // ON/OFF must follow the polled flag directly.
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, ",R6,5,5,31,1,5,1,4,390,1,0,3584,5120,31,96,5632,5918,1792,"
+                  "1792,0,30,0,0,0,0,1,5,0,410,:");
+
+  const auto &state = store.get_state();
+  EXPECT_FALSE(state.light.is_on);
+  EXPECT_EQ(state.light.brightness, 5);
+  EXPECT_EQ(state.light.color_index, 31);
+  EXPECT_EQ(state.light.effect_mode, 1);
+  EXPECT_EQ(state.light.effect_speed, 5);
+}
+
 TEST(RegisterStoreTest, ParsesHeatingActiveFromR5HeaterReadback) {
   RegisterStore store;
   put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,1,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");

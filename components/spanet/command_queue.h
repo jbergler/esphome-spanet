@@ -23,6 +23,11 @@ enum class CommandKind {
   kRfPoll,
   kSetpointWrite,
   kPumpWrite,
+  kLightToggle,
+  kLightBrightness,
+  kLightColor,
+  kLightEffectMode,
+  kLightEffectSpeed,
 };
 
 struct QueuedCommand {
