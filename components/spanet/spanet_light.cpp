@@ -8,6 +8,7 @@
 namespace esphome::spanet {
 
 static const char *const TAG = "spanet.light";
+static constexpr uint32_t COMMAND_TIMEOUT_MS = 1000;
 
 void SpaNetLight::setup() {
   this->parent_->add_on_state_callback([this](const State &state) { this->handle_state_update_(state); });
@@ -46,22 +47,22 @@ void SpaNetLight::write_state(light::LightState *state) {
   }
 
   if (!this->has_polled_state_ || desired_on != this->polled_on_) {
-    if (!this->parent_->request_light_toggle(desired_on)) {
-      ESP_LOGW(TAG, "Light toggle request rejected by hub");
+    if (!this->request_light_toggle_(desired_on)) {
+      ESP_LOGW(TAG, "Light toggle request rejected");
       return;
     }
   }
 
   if (desired_on && (!this->has_polled_state_ || desired_brightness != this->polled_brightness_)) {
-    if (!this->parent_->request_light_brightness(desired_brightness)) {
-      ESP_LOGW(TAG, "Light brightness request rejected by hub");
+    if (!this->request_light_brightness_(desired_brightness)) {
+      ESP_LOGW(TAG, "Light brightness request rejected");
       return;
     }
   }
 
   if (desired_on && has_desired_hue && (!this->has_polled_state_ || desired_hue != this->polled_hue_)) {
-    if (!this->parent_->request_light_color(desired_hue)) {
-      ESP_LOGW(TAG, "Light color request rejected by hub");
+    if (!this->request_light_color_(desired_hue)) {
+      ESP_LOGW(TAG, "Light color request rejected");
       return;
     }
   }
@@ -74,9 +75,9 @@ void SpaNetLight::handle_state_update_(const State &state) {
 
   const bool is_on = state.light.is_on;
 
-  const uint8_t brightness_u8 = this->parent_->device_brightness_to_esphome_(state.light.brightness);
+  const uint8_t brightness_u8 = device_brightness_to_esphome_(state.light.brightness);
   const float brightness = brightness_u8 / 255.0f;
-  const uint16_t hue = this->parent_->color_index_to_hue_(state.light.color_index);
+  const uint16_t hue = color_index_to_hue_(state.light.color_index);
   const float saturation = (state.light.effect_mode == 0) ? 0.0f : 1.0f;
 
   this->has_polled_state_ = true;
@@ -182,6 +183,65 @@ void SpaNetLight::hsv_to_rgb_(uint16_t hue_degrees, float saturation, float *red
   *red = r1 + m;
   *green = g1 + m;
   *blue = b1 + m;
+}
+
+bool SpaNetLight::request_light_toggle_(bool desired_state) {
+  this->parent_->enqueue_command_(QueuedCommand{
+      .kind = CommandKind::kLightToggle,
+      .payload = "W14",
+      .expected_ack = "W14",
+      .timeout_ms = COMMAND_TIMEOUT_MS,
+  });
+  return true;
+}
+
+bool SpaNetLight::request_light_brightness_(uint8_t esphome_brightness) {
+  uint8_t device_brightness = esphome_brightness_to_device_(esphome_brightness);
+  const std::string device_brightness_str = std::to_string(device_brightness);
+  this->parent_->enqueue_command_(QueuedCommand{
+      .kind = CommandKind::kLightBrightness,
+      .payload = "S08:" + device_brightness_str,
+      .expected_ack = device_brightness_str,
+      .timeout_ms = COMMAND_TIMEOUT_MS,
+  });
+  return true;
+}
+
+bool SpaNetLight::request_light_color_(uint16_t hue_degrees) {
+  uint8_t color_index = hue_to_color_index_(hue_degrees);
+  const std::string color_index_str = std::to_string(color_index);
+  this->parent_->enqueue_command_(QueuedCommand{
+      .kind = CommandKind::kLightColor,
+      .payload = "S10:" + color_index_str,
+      .expected_ack = color_index_str,
+      .timeout_ms = COMMAND_TIMEOUT_MS,
+  });
+  return true;
+}
+
+uint8_t SpaNetLight::esphome_brightness_to_device_(uint8_t esphome_0_255) {
+  return std::clamp(static_cast<uint8_t>(1 + (esphome_0_255 / 51)), uint8_t(1), uint8_t(5));
+}
+
+uint8_t SpaNetLight::device_brightness_to_esphome_(uint8_t device_1_5) {
+  if (device_1_5 < 1 || device_1_5 > 5) {
+    return 0;
+  }
+  return (device_1_5 - 1) * 51;
+}
+
+uint8_t SpaNetLight::hue_to_color_index_(uint16_t hue_degrees) {
+  uint16_t hue_index = (hue_degrees / 15) % 25;
+  return LIGHT_COLOR_MAP[hue_index];
+}
+
+uint16_t SpaNetLight::color_index_to_hue_(uint8_t color_index) {
+  for (size_t i = 0; i < LIGHT_COLOR_MAP.size(); ++i) {
+    if (LIGHT_COLOR_MAP[i] == color_index) {
+      return i * 15;
+    }
+  }
+  return 0;
 }
 
 }  // namespace esphome::spanet

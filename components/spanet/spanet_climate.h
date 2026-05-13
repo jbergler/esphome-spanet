@@ -19,6 +19,8 @@ class SpaNetClimate : public climate::Climate, public Component {
   void control(const climate::ClimateCall &call) override;
 
   void handle_state_update_(const State &state);
+  bool request_setpoint_temperature_(float target_c);
+  std::optional<int> quantize_and_encode_setpoint_(float target_c);
 
   SpaNetComponent *parent_;
 };

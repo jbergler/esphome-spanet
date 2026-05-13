@@ -9,6 +9,17 @@ namespace esphome::spanet {
 
 static const char *const TAG = "spanet.fan";
 static const char *const AUTO_PRESET = "auto";
+static constexpr uint32_t COMMAND_TIMEOUT_MS = 1000;
+
+// For speed_type=2 pumps, controller command values 2/3 are inverted compared
+// to observed readback raw modes in R5. Keep readback semantics in state/fan
+// code and normalize only the outbound S22..S26 payload here.
+static int encode_pump_command_mode(const PumpStatus &pump, int desired_raw_mode) {
+  if (pump.speed_type == 2 && (desired_raw_mode == 2 || desired_raw_mode == 3)) {
+    return desired_raw_mode == 2 ? 3 : 2;
+  }
+  return desired_raw_mode;
+}
 
 static size_t manual_mode_count_limit(const PumpStatus &pump) {
   return std::min(pump.manual_raw_mode_count, pump.manual_raw_modes.size());
@@ -94,8 +105,8 @@ void SpaNetPumpFan::control(const fan::FanCall &call) {
     }
   }
 
-  if (!this->parent_->request_pump_mode(this->pump_index_, next_raw_mode)) {
-    ESP_LOGW(TAG, "Pump %u command rejected by hub", this->pump_index_);
+  if (!this->request_pump_mode_(next_raw_mode)) {
+    ESP_LOGW(TAG, "Pump %u command rejected", this->pump_index_);
   }
 }
 
@@ -168,6 +179,40 @@ void SpaNetPumpFan::handle_state_update_(const State &state) {
     this->publish_state();
     this->has_published_state_ = true;
   }
+}
+
+bool SpaNetPumpFan::request_pump_mode_(int raw_mode) {
+  if (raw_mode < 0 || raw_mode > 4) {
+    ESP_LOGW(TAG, "Rejected invalid pump mode %d for pump %u", raw_mode, this->pump_index_);
+    return false;
+  }
+
+  const auto &pump = this->parent_->get_state().pumps[this->pump_index_ - 1];
+  if (!pump.installed || !pump.capabilities_valid) {
+    ESP_LOGW(TAG, "Rejected pump%u command while pump is unavailable", this->pump_index_);
+    return false;
+  }
+
+  if (!pump.supports_raw_mode[static_cast<size_t>(raw_mode)]) {
+    ESP_LOGW(TAG, "Rejected unsupported pump%u mode %d", this->pump_index_, raw_mode);
+    return false;
+  }
+
+  const int command_mode = encode_pump_command_mode(pump, raw_mode);
+  if (command_mode != raw_mode) {
+    ESP_LOGV(TAG, "Pump%u translating desired mode %d to wire mode %d (speed_type=%d)", this->pump_index_, raw_mode,
+             command_mode, pump.speed_type);
+  }
+
+  const int command_family = 21 + static_cast<int>(this->pump_index_);
+  const std::string command_prefix = "S" + std::to_string(command_family);
+  this->parent_->enqueue_command_(QueuedCommand{
+      .kind = CommandKind::kPumpWrite,
+      .payload = command_prefix + ":" + std::to_string(command_mode),
+      .expected_ack = command_prefix + "-OK",
+      .timeout_ms = COMMAND_TIMEOUT_MS,
+  });
+  return true;
 }
 
 }  // namespace esphome::spanet

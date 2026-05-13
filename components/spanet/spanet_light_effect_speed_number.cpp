@@ -7,6 +7,7 @@
 namespace esphome::spanet {
 
 static const char *const TAG = "spanet.light_speed";
+static constexpr uint32_t COMMAND_TIMEOUT_MS = 1000;
 
 void SpaNetLightEffectSpeedNumber::setup() {
   this->parent_->add_on_state_callback([this](const State &state) { this->handle_state_update_(state); });
@@ -23,8 +24,8 @@ void SpaNetLightEffectSpeedNumber::control(float value) {
     rounded = 5;
   }
 
-  if (!this->parent_->request_light_effect_speed(static_cast<uint8_t>(rounded))) {
-    ESP_LOGW(TAG, "Light effect speed request rejected by hub");
+  if (!this->request_light_effect_speed_(static_cast<uint8_t>(rounded))) {
+    ESP_LOGW(TAG, "Light effect speed request rejected");
     return;
   }
 }
@@ -37,6 +38,21 @@ void SpaNetLightEffectSpeedNumber::handle_state_update_(const State &state) {
   this->publish_state(static_cast<float>(state.light.effect_speed));
   this->has_published_state_ = true;
   this->last_speed_ = state.light.effect_speed;
+}
+
+bool SpaNetLightEffectSpeedNumber::request_light_effect_speed_(uint8_t speed) {
+  if (speed < 1 || speed > 5) {
+    ESP_LOGW(TAG, "Rejected invalid light effect speed %u (range 1-5)", speed);
+    return false;
+  }
+  const std::string speed_str = std::to_string(speed);
+  this->parent_->enqueue_command_(QueuedCommand{
+      .kind = CommandKind::kLightEffectSpeed,
+      .payload = "S09:" + speed_str,
+      .expected_ack = speed_str,
+      .timeout_ms = COMMAND_TIMEOUT_MS,
+  });
+  return true;
 }
 
 }  // namespace esphome::spanet

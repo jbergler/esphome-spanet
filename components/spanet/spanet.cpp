@@ -2,28 +2,12 @@
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 
-#include <cmath>
-#include <cstdlib>
-
 namespace esphome::spanet {
 
 static const char *const TAG = "spanet";
 static constexpr const char *const STATE_UPDATE_DEBOUNCE_TIMEOUT = "state_update_debounce";
 static constexpr uint32_t STATE_UPDATE_DEBOUNCE_MS = 250;
-static constexpr uint32_t COMMAND_TIMEOUT_MS = 1000;
-static constexpr float SETPOINT_MIN_C = 5.0f;
-static constexpr float SETPOINT_MAX_C = 41.0f;
 static constexpr size_t MAX_QUEUED_COMMANDS = 4;
-
-// For speed_type=2 pumps, controller command values 2/3 are inverted compared
-// to observed readback raw modes in R5. Keep readback semantics in state/fan
-// code and normalize only the outbound S22..S26 payload here.
-static int encode_pump_command_mode(const PumpStatus &pump, int desired_raw_mode) {
-  if (pump.speed_type == 2 && (desired_raw_mode == 2 || desired_raw_mode == 3)) {
-    return desired_raw_mode == 2 ? 3 : 2;
-  }
-  return desired_raw_mode;
-}
 
 void SpaNetComponent::setup() {
   ESP_LOGI(TAG, "Setting up dummy SpaNET component");
@@ -275,189 +259,11 @@ void SpaNetComponent::process_command_timeouts_(uint32_t now_ms) {
   }
 
   ESP_LOGW(TAG, "Command timed out after %u ms: payload=%s", age_ms, timed_out_command.payload.c_str());
-
-  if (timed_out_command.kind == CommandKind::kSetpointWrite) {
-    this->awaiting_setpoint_reconcile_tenths_.reset();
-  } else if (timed_out_command.kind == CommandKind::kLightToggle) {
-    this->pending_light_toggle_state_.reset();
-  }
 }
 
 void SpaNetComponent::send_uart_command_(const std::string &command) {
   ESP_LOGI(TAG, "UART TX: %s", command.c_str());
   this->write_str(command.c_str());
-}
-
-// Temperature Setpoint
-
-bool SpaNetComponent::request_setpoint_temperature(float target_c) {
-  auto maybe_target_tenths = this->quantize_and_encode_setpoint_(target_c);
-  if (!maybe_target_tenths.has_value()) {
-    ESP_LOGW(TAG, "Rejected invalid/out-of-range setpoint %.2fC", target_c);
-    return false;
-  }
-
-  this->enqueue_command_(QueuedCommand{
-      .kind = CommandKind::kSetpointWrite,
-      .payload = "W40:" + std::to_string(maybe_target_tenths.value()),
-      .expected_ack = std::to_string(maybe_target_tenths.value()),
-      .timeout_ms = COMMAND_TIMEOUT_MS,
-  });
-  return true;
-}
-
-std::optional<int> SpaNetComponent::quantize_and_encode_setpoint_(float target_c) {
-  if (std::isnan(target_c)) {
-    return std::nullopt;
-  }
-
-  const float quantized_c = std::round(target_c * 5.0f) / 5.0f;
-  if (quantized_c < SETPOINT_MIN_C || quantized_c > SETPOINT_MAX_C) {
-    return std::nullopt;
-  }
-
-  return static_cast<int>(std::lround(quantized_c * 10.0f));
-}
-
-// Pump controls
-bool SpaNetComponent::request_pump_mode(uint8_t pump_index, int raw_mode) {
-  if (pump_index < 1 || pump_index > 5) {
-    ESP_LOGW(TAG, "Rejected invalid pump index %u", pump_index);
-    return false;
-  }
-
-  if (raw_mode < 0 || raw_mode > 4) {
-    ESP_LOGW(TAG, "Rejected invalid pump mode %d for pump %u", raw_mode, pump_index);
-    return false;
-  }
-
-  const auto &pump = this->register_store_.get_state().pumps[pump_index - 1];
-  if (!pump.installed || !pump.capabilities_valid) {
-    ESP_LOGW(TAG, "Rejected pump%u command while pump is unavailable", pump_index);
-    return false;
-  }
-
-  if (!pump.supports_raw_mode[static_cast<size_t>(raw_mode)]) {
-    ESP_LOGW(TAG, "Rejected unsupported pump%u mode %d", pump_index, raw_mode);
-    return false;
-  }
-
-  const int command_mode = encode_pump_command_mode(pump, raw_mode);
-  if (command_mode != raw_mode) {
-    ESP_LOGV(TAG, "Pump%u translating desired mode %d to wire mode %d (speed_type=%d)", pump_index, raw_mode,
-             command_mode, pump.speed_type);
-  }
-
-  const int command_family = 21 + static_cast<int>(pump_index);
-  const std::string command_prefix = "S" + std::to_string(command_family);
-  this->enqueue_command_(QueuedCommand{
-      .kind = CommandKind::kPumpWrite,
-      .payload = command_prefix + ":" + std::to_string(command_mode),
-      .expected_ack = command_prefix + "-OK",
-      .timeout_ms = COMMAND_TIMEOUT_MS,
-  });
-  return true;
-}
-
-// Helper methods for light control
-uint8_t SpaNetComponent::esphome_brightness_to_device_(uint8_t esphome_0_255) {
-  // Convert ESPHome brightness (0-255) to device scale (1-5)
-  // 0-50 → 1, 51-102 → 2, 103-154 → 3, 155-205 → 4, 206-255 → 5
-  return std::clamp(static_cast<uint8_t>(1 + (esphome_0_255 / 51)), uint8_t(1), uint8_t(5));
-}
-
-uint8_t SpaNetComponent::device_brightness_to_esphome_(uint8_t device_1_5) {
-  // Convert device brightness (1-5) to ESPHome brightness (0-255)
-  // 1 → 0, 2 → 51, 3 → 102, 4 → 153, 5 → 204
-  if (device_1_5 < 1 || device_1_5 > 5) {
-    return 0;
-  }
-  return (device_1_5 - 1) * 51;
-}
-
-uint8_t SpaNetComponent::hue_to_color_index_(uint16_t hue_degrees) {
-  // Convert ESPHome hue (0-360°) to device color index
-  // Find the colorMap entry for the closest hue step
-  // Each step is 15°, so hue_index = (hue_degrees / 15) % 25
-  uint16_t hue_index = (hue_degrees / 15) % 25;
-  return LIGHT_COLOR_MAP[hue_index];
-}
-
-uint16_t SpaNetComponent::color_index_to_hue_(uint8_t color_index) {
-  // Reverse map: find hue for a given color index by searching colorMap
-  for (size_t i = 0; i < LIGHT_COLOR_MAP.size(); ++i) {
-    if (LIGHT_COLOR_MAP[i] == color_index) {
-      return i * 15;  // Return hue in degrees
-    }
-  }
-  // If not found, return 0 (red)
-  return 0;
-}
-
-// Light controls
-bool SpaNetComponent::request_light_toggle(bool desired_state) {
-  this->pending_light_toggle_state_ = desired_state;
-  this->enqueue_command_(QueuedCommand{
-      .kind = CommandKind::kLightToggle,
-      .payload = "W14",
-      .expected_ack = "W14",
-      .timeout_ms = COMMAND_TIMEOUT_MS,
-  });
-  return true;
-}
-
-bool SpaNetComponent::request_light_brightness(uint8_t esphome_brightness) {
-  uint8_t device_brightness = this->esphome_brightness_to_device_(esphome_brightness);
-  const std::string device_brightness_str = std::to_string(device_brightness);
-  this->enqueue_command_(QueuedCommand{
-      .kind = CommandKind::kLightBrightness,
-      .payload = "S08:" + device_brightness_str,
-      .expected_ack = device_brightness_str,
-      .timeout_ms = COMMAND_TIMEOUT_MS,
-  });
-  return true;
-}
-
-bool SpaNetComponent::request_light_color(uint16_t hue_degrees) {
-  uint8_t color_index = this->hue_to_color_index_(hue_degrees);
-  const std::string color_index_str = std::to_string(color_index);
-  this->enqueue_command_(QueuedCommand{
-      .kind = CommandKind::kLightColor,
-      .payload = "S10:" + color_index_str,
-      .expected_ack = color_index_str,
-      .timeout_ms = COMMAND_TIMEOUT_MS,
-  });
-  return true;
-}
-
-bool SpaNetComponent::request_light_effect_mode(uint8_t mode) {
-  if (mode > 4) {
-    ESP_LOGW(TAG, "Rejected invalid light effect mode %u (max 4)", mode);
-    return false;
-  }
-  const std::string mode_str = std::to_string(mode);
-  this->enqueue_command_(QueuedCommand{
-      .kind = CommandKind::kLightEffectMode,
-      .payload = "S07:" + mode_str,
-      .expected_ack = mode_str,
-      .timeout_ms = COMMAND_TIMEOUT_MS,
-  });
-  return true;
-}
-
-bool SpaNetComponent::request_light_effect_speed(uint8_t speed) {
-  if (speed < 1 || speed > 5) {
-    ESP_LOGW(TAG, "Rejected invalid light effect speed %u (range 1-5)", speed);
-    return false;
-  }
-  const std::string speed_str = std::to_string(speed);
-  this->enqueue_command_(QueuedCommand{
-      .kind = CommandKind::kLightEffectSpeed,
-      .payload = "S09:" + speed_str,
-      .expected_ack = speed_str,
-      .timeout_ms = COMMAND_TIMEOUT_MS,
-  });
-  return true;
 }
 
 }  // namespace esphome::spanet

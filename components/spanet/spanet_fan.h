@@ -24,6 +24,7 @@ class SpaNetPumpFan : public fan::Fan, public Component {
   void handle_state_update_(const State &state);
   int resolve_manual_speed_(const PumpStatus &pump) const;
   void sync_supported_presets_(const PumpStatus &pump);
+  bool request_pump_mode_(int raw_mode);
 
   SpaNetComponent *parent_;
   uint8_t pump_index_;
