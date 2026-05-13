@@ -88,6 +88,7 @@ inline CommandQueue::CommandQueue(SendFn send_fn, NowMsFn now_ms_fn, size_t max_
 }
 
 inline EnqueueResult CommandQueue::enqueue(Command command) {
+  ESP_LOGD(TAG, "enqueue called: kind=%d payload='%s'", static_cast<int>(command.kind), command.payload.c_str());
   if (command.kind == CommandKind::kRfPoll && this->has_pending_kind(CommandKind::kRfPoll)) {
     return EnqueueResult::kDroppedDuplicateRfPoll;
   }

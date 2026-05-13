@@ -62,7 +62,7 @@ void SpaNetComponent::loop() {
 }
 
 void SpaNetComponent::on_uart_message_(const std::string &message) {
-  ESP_LOGI(TAG, "UART RX: '%s'", message.c_str());
+  ESP_LOGI(TAG, "UART RX: %s", message.c_str());
 
   if (this->command_queue_ == nullptr) {
     return;
