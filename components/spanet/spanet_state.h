@@ -145,7 +145,6 @@ class RegisterStore {
   bool update(const std::string &line);
 
   const State &get_state() const;
-
   const Registers &get_registers() const;
 
  private:
@@ -153,6 +152,9 @@ class RegisterStore {
   Registers registers_ = {};
 
   void update_controller_status();
+
+ public:
+  State &get_mutable_state() { return state; }
 };
 
 }  // namespace esphome::spanet

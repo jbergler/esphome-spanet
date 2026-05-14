@@ -677,32 +677,36 @@ using AnyRegisterLine = std::variant<RegisterR2, RegisterR3, RegisterR4, Registe
 // SpaNetParser is stateless. Every method is a pure function of its inputs.
 class SpaNetParser {
  public:
+  // Extract the register label from a line (e.g., "R2", "R3", "RG", etc.)
+  // expects ,R2,...,...,... etc
+  // Returns empty string if not a register line.
+  static std::string extract_register_label(const std::string &line) {
+    auto content = trim_(line);
+
+    // Skip leading comma from continuation lines.
+    if (!content.empty() && content[0] == ',') {
+      content = content.substr(1);
+    }
+
+    auto first_comma = content.find(',');
+    auto label = content.substr(0, first_comma);
+    if (is_register_label_(label)) {
+      return label;
+    }
+
+    return "";
+  }
+
   // Determines the routing of a single UART line (no embedded newlines).
   //   kStateUpdate -> feed into RegisterStore::update()
   //   kAck         -> match against a pending command expectation
   //   kUnknown     -> log and discard
   //
-  // Supported RF start prefixes are both "RF:" and "RF,".
-  // Standalone register continuation lines ("R3:...", "RA:...") are also
-  // classified as kStateUpdate, so the store can be fed directly without any
-  // multi-line assembly step.
+  // Standalone register continuation lines (",R3,...") are classified as kStateUpdate.
   static MessageType classify_message(const std::string &line) {
     auto trimmed = trim_(line);
-    if (trimmed.rfind("RF:", 0) == 0 || trimmed.rfind("RF,", 0) == 0) {
-      return MessageType::kStateUpdate;
-    }
 
-    // Real controller format: ,{LABEL},{fields},: — label is the token between
-    // the first and second comma.
-    if (!trimmed.empty() && trimmed[0] == ',') {
-      auto second_comma = trimmed.find(',', 1);
-      if (second_comma != std::string::npos && is_register_label_(trimmed.substr(1, second_comma - 1))) {
-        return MessageType::kStateUpdate;
-      }
-    }
-
-    auto colon_pos = trimmed.find(':');
-    if (colon_pos != std::string::npos && is_register_label_(trimmed.substr(0, colon_pos))) {
+    if (!extract_register_label(line).empty()) {
       return MessageType::kStateUpdate;
     }
 

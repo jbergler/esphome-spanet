@@ -34,13 +34,18 @@ struct Command {
   CommandKind kind;
   std::string payload;
   std::optional<std::string> expected_ack;
+  // Optional second-stage completion check for multi-line responses.
+  std::function<bool(const std::string &)> completion_predicate;
   uint32_t timeout_ms;
   bool triggers_rf_poll = false;
+  // Optional callback to mutate state on successful ack
+  std::function<void(class State &)> on_success;
 };
 
 struct InFlightCommand {
   Command command;
   uint32_t sent_at_ms;
+  bool initial_ack_matched{false};
 };
 
 enum class EnqueueResult {
@@ -52,6 +57,7 @@ enum class EnqueueResult {
 enum class AckResult {
   kNoInFlightCommand,
   kUnmatchedAck,
+  kInProgress,
   kMatched,
 };
 
@@ -68,7 +74,7 @@ class CommandQueue {
 
   bool has_pending_kind(CommandKind kind) const;
 
- private:
+ public:
   void maybe_send_next_();
 
   SendFn send_fn_;
@@ -109,18 +115,33 @@ inline AckResult CommandQueue::acknowledge(const std::string &message, InFlightC
     return AckResult::kNoInFlightCommand;
   }
 
-  if (message != this->in_flight_command_->command.expected_ack.value()) {
+  auto &in_flight = this->in_flight_command_.value();
+  if (in_flight.command.completion_predicate) {
+    if (!in_flight.initial_ack_matched) {
+      if (message != in_flight.command.expected_ack.value()) {
+        ESP_LOGD(TAG, "Message '%s' did not match expected ack '%s' for in-flight command", message.c_str(),
+                 in_flight.command.expected_ack.value().c_str());
+        return AckResult::kUnmatchedAck;
+      }
+
+      in_flight.initial_ack_matched = true;
+      return AckResult::kInProgress;
+    }
+
+    if (!in_flight.command.completion_predicate(message)) {
+      return AckResult::kInProgress;
+    }
+  } else if (message != in_flight.command.expected_ack.value()) {
     ESP_LOGD(TAG, "Message '%s' did not match expected ack '%s' for in-flight command", message.c_str(),
-             this->in_flight_command_->command.expected_ack.value().c_str());
+             in_flight.command.expected_ack.value().c_str());
     return AckResult::kUnmatchedAck;
   }
 
   if (matched_command != nullptr) {
-    *matched_command = this->in_flight_command_.value();
+    *matched_command = in_flight;
   }
 
   this->in_flight_command_.reset();
-  this->maybe_send_next_();
   return AckResult::kMatched;
 }
 

@@ -36,8 +36,12 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   void set_instant_power_sensor(sensor::Sensor *sensor) { this->sen_instant_power_ = sensor; }
   void set_total_energy_sensor(sensor::Sensor *sensor) { this->sen_total_energy_ = sensor; }
   void add_on_state_callback(StateUpdateCallback callback) { this->state_callbacks_.push_back(std::move(callback)); }
+  void add_on_rf_poll_complete_callback(std::function<void()> callback) {
+    this->rf_poll_complete_callbacks_.push_back(std::move(callback));
+  }
   const State &get_state() const { return this->register_store_.get_state(); }
   void enqueue_command_(Command command);
+  bool has_pending_command_kind_(CommandKind kind) const;
 
   void setup() override;
   void loop() override;
@@ -83,6 +87,7 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   RegisterStore register_store_;
   UpdateDebounceGate state_update_debounce_{250};
   std::vector<StateUpdateCallback> state_callbacks_;
+  std::vector<std::function<void()>> rf_poll_complete_callbacks_;
   std::unique_ptr<CommandQueue> command_queue_;
 };
 

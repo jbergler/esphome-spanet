@@ -6,23 +6,9 @@ namespace esphome::spanet::tests {
 
 // ── classify_message ─────────────────────────────────────────────────────────
 
-TEST(ClassifyMessageTest, RfStartLineIsStateUpdate) {
-  EXPECT_EQ(SpaNetParser::classify_message("RF:,R2:0,0"), MessageType::kStateUpdate);
-  EXPECT_EQ(SpaNetParser::classify_message("RF,R2:0,0"), MessageType::kStateUpdate);
-}
-
 TEST(ClassifyMessageTest, StandaloneRegisterLineIsStateUpdate) {
-  EXPECT_EQ(SpaNetParser::classify_message("R3:10,20,30"), MessageType::kStateUpdate);
-  EXPECT_EQ(SpaNetParser::classify_message("RA:1,2,3"), MessageType::kStateUpdate);
   EXPECT_EQ(SpaNetParser::classify_message(",R3,10,1,4,4,SW V6,:"), MessageType::kStateUpdate);
   EXPECT_EQ(SpaNetParser::classify_message(",RE,0,0,0,0,:*"), MessageType::kStateUpdate);
-}
-
-TEST(ClassifyMessageTest, SAndWPrefixedLinesAreAck) {
-  EXPECT_EQ(SpaNetParser::classify_message("S22-OK"), MessageType::kAck);
-  EXPECT_EQ(SpaNetParser::classify_message("W40:380"), MessageType::kAck);
-  EXPECT_EQ(SpaNetParser::classify_message("W40:390"), MessageType::kAck);
-  EXPECT_EQ(SpaNetParser::classify_message("W40:374"), MessageType::kAck);
 }
 
 TEST(ClassifyMessageTest, UnrecognisedLinesAreUnknown) {

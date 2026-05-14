@@ -6,8 +6,11 @@ namespace esphome::spanet {
 
 static const char *const TAG = "spanet";
 static constexpr const char *const STATE_UPDATE_DEBOUNCE_TIMEOUT = "state_update_debounce";
+static constexpr const char *const INITIAL_POLL_TIMEOUT = "initial_poll";
 static constexpr uint32_t STATE_UPDATE_DEBOUNCE_MS = 250;
 static constexpr size_t MAX_QUEUED_COMMANDS = 4;
+static constexpr uint32_t RF_POLL_TIMEOUT_MS = 5000;
+static constexpr uint32_t INITIAL_POLL_DELAY_MS = 10000;
 
 void SpaNetComponent::setup() {
   ESP_LOGI(TAG, "Configuring SpaNET component");
@@ -40,9 +43,9 @@ void SpaNetComponent::setup() {
     this->publish_float_sensor_if_changed_(this->sen_total_energy_, power.total_energy_kwh);
   });
 
-  // Trigger an initial poll immediately; PollingComponent handles recurring
-  // polls.
-  this->update();
+  // Trigger initial poll after startup delay; PollingComponent handles
+  // recurring polls.
+  this->set_timeout(INITIAL_POLL_TIMEOUT, INITIAL_POLL_DELAY_MS, [this]() { this->update(); });
 }
 
 void SpaNetComponent::loop() {
@@ -59,6 +62,59 @@ void SpaNetComponent::loop() {
   }
 
   this->process_command_timeouts_(millis());
+  if (this->command_queue_ != nullptr) {
+    this->command_queue_->maybe_send_next_();
+  }
+}
+
+// Returns a predicate that checks if RF response is complete.
+// For V3+: only matches RG.
+// For V2 or unknown version: matches either RG or RE.
+static auto make_rf_completion_predicate(const RegisterStore &store) {
+  return [&store](const std::string &line) {
+    const auto register_label = SpaNetParser::extract_register_label(line);
+    const auto &state = store.get_state();
+    const auto &software_version = state.controller_status.software_version;
+
+    // No version info yet: match both sentinels
+    if (software_version.empty()) {
+      return register_label == "RG" || register_label == "RE";
+    }
+
+    // Parse version from strings like "SW V3" or "SW V6 21 12 13"
+    auto space_idx = software_version.find(' ');
+    if (space_idx == std::string::npos || space_idx + 1 >= software_version.length()) {
+      // Malformed: accept both sentinels
+      return register_label == "RG" || register_label == "RE";
+    }
+
+    auto version_part = software_version.substr(space_idx + 1);
+    auto dot_idx = version_part.find('.');
+    if (dot_idx != std::string::npos) {
+      version_part = version_part.substr(0, dot_idx);
+    }
+
+    // Parse major version without exceptions: manual digit conversion
+    if (version_part.empty()) {
+      return register_label == "RG" || register_label == "RE";
+    }
+
+    int major_version = 0;
+    for (char c : version_part) {
+      if (c < '0' || c > '9') {
+        // Non-digit: accept both sentinels
+        return register_label == "RG" || register_label == "RE";
+      }
+      major_version = major_version * 10 + (c - '0');
+    }
+
+    // V3+: only RG; V2: only RE
+    if (major_version >= 3) {
+      return register_label == "RG";
+    } else {
+      return register_label == "RE";
+    }
+  };
 }
 
 void SpaNetComponent::on_uart_message_(const std::string &message) {
@@ -75,15 +131,31 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
     case AckResult::kUnmatchedAck:
       ESP_LOGV(TAG, "Message '%s' did not match expected ack for in-flight command", message.c_str());
       break;
+    case AckResult::kInProgress:
+      // RF header line is queue-internal and not a state/ack payload to route.
+      if (message == "RF:") {
+        return;
+      }
+      break;
     case AckResult::kMatched:
+      // Pre-emptively mutate state if on_success callback is set
+      if (matched_command.command.on_success) {
+        matched_command.command.on_success(this->register_store_.get_mutable_state());
+        this->notify_state_update_(this->register_store_.get_state());
+      }
       if (matched_command.command.triggers_rf_poll) {
-        this->enqueue_command_(Command{
-            .kind = CommandKind::kRfPoll,
-            .payload = "RF",
-            .expected_ack = "RF:",
-            .timeout_ms = 500,
-            .triggers_rf_poll = false,
-        });
+        this->update();
+      }
+      // RF poll completion triggers callbacks immediately (no need for debounce flag)
+      if (matched_command.command.kind == CommandKind::kRfPoll) {
+        for (auto &callback : this->rf_poll_complete_callbacks_) {
+          callback();
+        }
+      }
+      // If the matched message is also a state update (e.g., RG/RE sentinel for staged RF),
+      // fall through to process it as such.
+      if (SpaNetParser::classify_message(message) == MessageType::kStateUpdate) {
+        break;
       }
       return;
   }
@@ -91,6 +163,8 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
   switch (SpaNetParser::classify_message(message)) {
     case MessageType::kStateUpdate:
       this->on_state_update_message_(message);
+      break;
+    case MessageType::kAck:
       break;
     case MessageType::kUnknown:
       ESP_LOGW(TAG, "Ignoring unknown message '%s'", message.c_str());
@@ -120,7 +194,8 @@ void SpaNetComponent::update() {
       .kind = CommandKind::kRfPoll,
       .payload = "RF",
       .expected_ack = "RF:",
-      .timeout_ms = 500,
+      .completion_predicate = make_rf_completion_predicate(this->register_store_),
+      .timeout_ms = RF_POLL_TIMEOUT_MS,
       .triggers_rf_poll = false,
   });
 }
@@ -187,6 +262,13 @@ void SpaNetComponent::enqueue_command_(Command command) {
                payload.c_str());
       return;
   }
+}
+
+bool SpaNetComponent::has_pending_command_kind_(CommandKind kind) const {
+  if (this->command_queue_ == nullptr) {
+    return false;
+  }
+  return this->command_queue_->has_pending_kind(kind);
 }
 
 void SpaNetComponent::process_command_timeouts_(uint32_t now_ms) {
