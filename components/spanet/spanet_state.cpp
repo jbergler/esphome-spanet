@@ -19,6 +19,15 @@ static std::string normalize_software_version(const std::string &version) {
   return normalized;
 }
 
+static int get_major_version(const std::string &normalized_version) {
+  const size_t dot_pos = normalized_version.find('.');
+  if (dot_pos == std::string::npos) {
+    return 0;
+  }
+  const size_t v = normalized_version.find('V');
+  return std::stoi(normalized_version.substr(v + 1, dot_pos - v - 1));
+}
+
 static std::optional<float> parse_tenths_celsius(const std::string &raw) {
   long parsed{};
   auto [ptr, ec] = std::from_chars(raw.data(), raw.data() + raw.size(), parsed);
@@ -181,6 +190,7 @@ void RegisterStore::update_controller_status() {
   if (this->registers_.r3.has_value()) {
     const auto &r3 = this->registers_.r3.value();
     this->state.controller_status.software_version = normalize_software_version(r3.software_version);
+    this->state.controller_status.major_version = get_major_version(this->state.controller_status.software_version);
     this->state.controller_status.model = r3.model;
     this->state.controller_status.serial_number = r3.serial_number_1 + "-" + r3.serial_number_2;
   }

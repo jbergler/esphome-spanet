@@ -5,6 +5,11 @@
 #include <gtest/gtest.h>
 
 #include "../../components/spanet/command_queue.h"
+#include "../../components/spanet/spanet_parser.h"
+#include "../../components/spanet/spanet_state.h"
+
+// Test support: Include implementation for linking
+#include "../../components/spanet/spanet_state.cpp"
 
 namespace esphome::spanet::tests {
 
@@ -252,6 +257,44 @@ TEST(CommandQueueTest, StagedRfTimeoutAdvancesQueueAfterAckPhase) {
 
   ASSERT_EQ(writes.size(), 2u);
   EXPECT_EQ(writes[1], "S15:1\n");
+}
+
+// Test helper: creates RegisterStore with controlled version and returns real completion predicate
+static auto make_test_rf_completion_predicate(int major_version) {
+  auto store = std::make_shared<RegisterStore>();
+  store->get_mutable_state().controller_status.major_version = major_version;
+  // Return a lambda that holds the store and calls the real predicate
+  return [store](const std::string &line) { return make_rf_completion_predicate(*store)(line); };
+}
+
+TEST(RfCompletionPredicateTest, V3PlusMatchesRgOnly) {
+  auto predicate = make_test_rf_completion_predicate(3);
+  EXPECT_TRUE(predicate(",RG,1,1,1,1,1,1,0-,1-2-0324,:*"));
+  EXPECT_FALSE(predicate(",RE,0,0,0,0,:*"));
+  EXPECT_FALSE(predicate(",R2,0,239,40,81,:"));
+}
+
+TEST(RfCompletionPredicateTest, V2MatchesReOnly) {
+  auto predicate = make_test_rf_completion_predicate(2);
+  EXPECT_TRUE(predicate(",RE,0,0,0,0,:*"));
+  EXPECT_FALSE(predicate(",RG,1,1,1,1,1,1,0-,1-2-0324,:*"));
+  EXPECT_FALSE(predicate(",R3,10,1,4,4,4,SW V2,:"));
+}
+
+TEST(RfCompletionPredicateTest, UnknownVersionDefaultsToRe) {
+  auto predicate = make_test_rf_completion_predicate(0);
+  EXPECT_TRUE(predicate(",RE,0,0,0,0,:*"));
+  EXPECT_FALSE(predicate(",RG,1,1,1,1,1,1,0-,1-2-0324,:*"));
+}
+
+TEST(RfCompletionPredicateTest, HandlesRfPrefixedSentinelLines) {
+  auto predicate = make_test_rf_completion_predicate(3);
+  EXPECT_TRUE(predicate(",RG,1,1,1,1,:"));
+  EXPECT_FALSE(predicate(",RE,0,0,0,0,:"));
+
+  auto v2_predicate = make_test_rf_completion_predicate(2);
+  EXPECT_TRUE(v2_predicate(",RE,0,0,0,0,:"));
+  EXPECT_FALSE(v2_predicate(",RG,1,1,1,1,:"));
 }
 
 }  // namespace esphome::spanet::tests

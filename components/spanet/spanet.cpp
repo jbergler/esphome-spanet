@@ -67,56 +67,6 @@ void SpaNetComponent::loop() {
   }
 }
 
-// Returns a predicate that checks if RF response is complete.
-// For V3+: only matches RG.
-// For V2 or unknown version: matches either RG or RE.
-static auto make_rf_completion_predicate(const RegisterStore &store) {
-  return [&store](const std::string &line) {
-    const auto register_label = SpaNetParser::extract_register_label(line);
-    const auto &state = store.get_state();
-    const auto &software_version = state.controller_status.software_version;
-
-    // No version info yet: match both sentinels
-    if (software_version.empty()) {
-      return register_label == "RG" || register_label == "RE";
-    }
-
-    // Parse version from strings like "SW V3" or "SW V6 21 12 13"
-    auto space_idx = software_version.find(' ');
-    if (space_idx == std::string::npos || space_idx + 1 >= software_version.length()) {
-      // Malformed: accept both sentinels
-      return register_label == "RG" || register_label == "RE";
-    }
-
-    auto version_part = software_version.substr(space_idx + 1);
-    auto dot_idx = version_part.find('.');
-    if (dot_idx != std::string::npos) {
-      version_part = version_part.substr(0, dot_idx);
-    }
-
-    // Parse major version without exceptions: manual digit conversion
-    if (version_part.empty()) {
-      return register_label == "RG" || register_label == "RE";
-    }
-
-    int major_version = 0;
-    for (char c : version_part) {
-      if (c < '0' || c > '9') {
-        // Non-digit: accept both sentinels
-        return register_label == "RG" || register_label == "RE";
-      }
-      major_version = major_version * 10 + (c - '0');
-    }
-
-    // V3+: only RG; V2: only RE
-    if (major_version >= 3) {
-      return register_label == "RG";
-    } else {
-      return register_label == "RE";
-    }
-  };
-}
-
 void SpaNetComponent::on_uart_message_(const std::string &message) {
   ESP_LOGI(TAG, "UART RX: %s", message.c_str());
 

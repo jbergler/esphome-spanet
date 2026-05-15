@@ -12,6 +12,7 @@ namespace esphome::spanet {
 
 struct ControllerStatus {
   std::string software_version;
+  int major_version{0};
   std::string model;
   std::string serial_number;
   std::optional<time_t> current_time;
@@ -156,5 +157,15 @@ class RegisterStore {
  public:
   State &get_mutable_state() { return state; }
 };
+
+// Version-aware RF completion predicate factory: matches RG for V3+, RE for V2/unknown
+inline auto make_rf_completion_predicate(const RegisterStore &store) {
+  return [&store](const std::string &line) {
+    const auto register_label = SpaNetParser::extract_register_label(line);
+    const auto &state = store.get_state();
+    const auto &major_version = state.controller_status.major_version;
+    return register_label == (major_version >= 3 ? "RG" : "RE");
+  };
+}
 
 }  // namespace esphome::spanet
