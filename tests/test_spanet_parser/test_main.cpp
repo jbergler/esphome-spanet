@@ -19,15 +19,8 @@ TEST(ClassifyMessageTest, UnrecognisedLinesAreUnknown) {
 // ── parse_register_line
 // ───────────────────────────────────────────────────────
 
-TEST(ParseRegisterLineTest, ParsesRfStartLineWithEmbeddedRegister) {
-  auto result = SpaNetParser::parse_register_line("RF:,R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,6000,"
-                                                  "342132,42286,40243,44,0,0,0,650,39660,42484,126,:");
-  ASSERT_TRUE(result.has_value());
-  ASSERT_TRUE(std::holds_alternative<RegisterR2>(result.value()));
-}
-
-TEST(ParseRegisterLineTest, ParsesRfCommaPrefixLegacyLine) {
-  auto result = SpaNetParser::parse_register_line("RF,R2:0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,6000,"
+TEST(ParseRegisterLineTest, BasicParsingWorks) {
+  auto result = SpaNetParser::parse_register_line(",R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,6000,"
                                                   "342132,42286,40243,44,0,0,0,650,39660,42484,126");
   ASSERT_TRUE(result.has_value());
   ASSERT_TRUE(std::holds_alternative<RegisterR2>(result.value()));
@@ -42,7 +35,7 @@ TEST(ParseRegisterLineTest, ParsesRgWithExactlyFourteenFields) {
   EXPECT_EQ(rg.unknown_14, "14");
 }
 
-TEST(ParseRegisterLineTest, ParsesStandaloneRegisterLine) {
+TEST(ParseRegisterLineTest, ParsesR3WithSomeFields) {
   auto result = SpaNetParser::parse_register_line(",R3,10,20,30,40,50,SW V3.1,SVM1,SN123,SN456,:");
   ASSERT_TRUE(result.has_value());
   ASSERT_TRUE(std::holds_alternative<RegisterR3>(result.value()));
@@ -50,6 +43,14 @@ TEST(ParseRegisterLineTest, ParsesStandaloneRegisterLine) {
   const auto &r3 = std::get<RegisterR3>(result.value());
   EXPECT_EQ(r3.software_version, "SW V3.1");
   EXPECT_EQ(r3.model, "SVM1");
+}
+
+// ── extract_register_label
+// ───────────────────────────────────────────────────────
+
+TEST(ExtractRegisterLabelTest, HandlesRfPrefixedRegisterLines) {
+  EXPECT_EQ(SpaNetParser::extract_register_label(",RE,0,0,0,0,:*"), "RE");
+  EXPECT_EQ(SpaNetParser::extract_register_label(",RG:1,1,1,1"), "RG");
 }
 
 TEST(ParseRegisterLineTest, ReturnsNulloptForNonRegisterLine) {

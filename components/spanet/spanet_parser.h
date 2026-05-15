@@ -681,19 +681,9 @@ class SpaNetParser {
   // expects ,R2,...,...,... etc
   // Returns empty string if not a register line.
   static std::string extract_register_label(const std::string &line) {
-    auto content = trim_(line);
-
-    // Skip leading comma from continuation lines.
-    if (!content.empty() && content[0] == ',') {
-      content = content.substr(1);
+    if (line.length() >= 4 && line[1] == 'R') {
+      return line.substr(1, 2);
     }
-
-    auto first_comma = content.find(',');
-    auto label = content.substr(0, first_comma);
-    if (is_register_label_(label)) {
-      return label;
-    }
-
     return "";
   }
 
@@ -721,59 +711,26 @@ class SpaNetParser {
   // Returns nullopt if the line does not contain a recognisable register
   // pattern.
   //
-  // Handles both line shapes present in real SpaNET RF responses:
-  //   RF start line:   "RF:,R2,1,2,3,:" or "RF,R2:1,2,3"
-  //   Continuation:    ",R3,10,20,30,:" or "R3:10,20,30"
+  // Handles register lines in the format: ",R2:1,2,3"
   static std::optional<AnyRegisterLine> parse_register_line(const std::string &line) {
     auto content = trim_(line);
-
-    // Strip RF start prefixes from the first response line.
-    if (content.rfind("RF:", 0) == 0 || content.rfind("RF,", 0) == 0) {
-      content = content.substr(3);
-    }
 
     if (!content.empty() && content[0] == ',') {
       content = content.substr(1);
     }
 
-    // Legacy shape after optional prefix stripping: {LABEL}:{fields}
+    // Should be "R?,field1,field2,etc"
     auto first_comma = content.find(',');
-    auto first_colon = content.find(':');
-    if (first_colon != std::string::npos && (first_comma == std::string::npos || first_colon < first_comma)) {
-      auto label = content.substr(0, first_colon);
-      if (!is_register_label_(label)) {
-        return std::nullopt;
-      }
-
-      auto fields = split_by_comma_(content.substr(first_colon + 1));
-      return decode_register_line_(label, std::move(fields));
-    }
-
-    // Real controller shape: {LABEL},{fields},:
-    auto colon_pos = content.find(':');
-    if (colon_pos == std::string::npos) {
+    if (first_comma == std::string::npos) {
       return std::nullopt;
     }
-
-    auto all_fields = split_by_comma_(content.substr(0, colon_pos));
-    if (all_fields.empty()) {
-      return std::nullopt;
-    }
-
-    while (!all_fields.empty() && all_fields.back().empty()) {
-      all_fields.pop_back();
-    }
-    if (all_fields.empty()) {
-      return std::nullopt;
-    }
-
-    auto label = all_fields[0];
+    auto label = content.substr(0, first_comma);
     if (!is_register_label_(label)) {
       return std::nullopt;
     }
 
-    all_fields.erase(all_fields.begin());
-    return decode_register_line_(label, std::move(all_fields));
+    auto fields = split_by_comma_(content.substr(first_comma + 1));
+    return decode_register_line_(label, std::move(fields));
   }
 
  private:

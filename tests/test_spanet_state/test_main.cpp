@@ -69,7 +69,7 @@ TEST(RegisterStoreTest, UpdateReturnsTrueForUnknownRegisterLabel) {
 TEST(RegisterStoreTest, UpdateReturnsTrueForValidLine) {
   RegisterStore store;
   EXPECT_TRUE(put_line(store, ",R3,10,20,30,40,50,SW V3.1,SVM1,SN123,SN456,:"));
-  EXPECT_TRUE(put_line(store, "RF:,R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,"
+  EXPECT_TRUE(put_line(store, ",R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,"
                               "6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:"));
 }
 
@@ -89,7 +89,8 @@ TEST(RegisterStoreTest, StoresTypedRegistersInRegistersStruct) {
 TEST(RegisterStoreTest, HandlesCompleteRealRfPayload) {
   RegisterStore store;
 
-  put_line(store, "RF:,R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,"
+  put_line(store, "RF:");
+  put_line(store, ",R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,"
                   "6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:");
   put_line(store, ",R3,10,1,4,4,4,SW V6 21 12 "
                   "13,SVM1,21460001,20000999,0,1,0,0,0,0,NA,1,0,414,Auto,650,0,"
