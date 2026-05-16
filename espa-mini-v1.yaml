@@ -33,8 +33,16 @@ api:
         - lambda: |-
             id(spa_hub).request_set_current_time_now();
 
+http_request:
+
 ota:
   - platform: esphome
+  - platform: http_request
+
+update:
+  - platform: http_request
+    name: "Firmware Update"
+    source: https://jbergler.github.io/esphome-spanet/espa-mini-v1/manifest.json
 
 wifi:
   # Intentionally leave station credentials unset for creator-style provisioning.

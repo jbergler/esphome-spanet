@@ -43,15 +43,18 @@ jobs:
 
       - name: Assemble dist
         run: |
-          mkdir -p dist
           BUILD=.esphome/build/espa-mini-v1/.pioenvs/espa-mini-v1
-          cp "$BUILD/firmware.factory.bin" dist/espa-mini-v1.factory.bin
-          cp "$BUILD/firmware.ota.bin"     dist/espa-mini-v1.ota.bin
+          mkdir -p dist/espa-mini-v1
+          cp "$BUILD/firmware.factory.bin" dist/espa-mini-v1/espa-mini-v1.factory.bin
+          cp "$BUILD/firmware.ota.bin"     dist/espa-mini-v1/espa-mini-v1.ota.bin
 
       - name: Generate manifest.json
         run: |
           python3 - <<'PYEOF'
-          import json, os
+          import json, os, hashlib
+          ota_bin = "dist/espa-mini-v1/espa-mini-v1.ota.bin"
+          with open(ota_bin, "rb") as f:
+              md5 = hashlib.md5(f.read()).hexdigest()
           manifest = {
               "name": "eSPA Mini v1",
               "version": os.environ["VERSION"],
@@ -63,10 +66,14 @@ jobs:
                       "parts": [
                           {"path": "espa-mini-v1.factory.bin", "offset": 0}
                       ],
+                      "ota": {
+                          "path": "espa-mini-v1.ota.bin",
+                          "md5": md5,
+                      },
                   }
               ],
           }
-          with open("dist/manifest.json", "w") as f:
+          with open("dist/espa-mini-v1/manifest.json", "w") as f:
               json.dump(manifest, f, indent=2)
               f.write("\n")
           PYEOF
@@ -74,6 +81,7 @@ jobs:
       - name: Generate index.html
         run: |
           VERSION="${{ env.VERSION }}"
+          mkdir -p dist
           cat > dist/index.html <<HTMLEOF
           <!DOCTYPE html>
           <html lang="en">
@@ -100,7 +108,7 @@ jobs:
             <h1>eSPA Mini v1</h1>
             <p class="version">Version ${VERSION}</p>
             <p>Connect your ESP32-S3 via USB, then click <strong>Install</strong>.</p>
-            <esp-web-install-button manifest="manifest.json"></esp-web-install-button>
+            <esp-web-install-button manifest="espa-mini-v1/manifest.json"></esp-web-install-button>
             <footer>
               Requires Chrome or Edge with Web Serial support.
               <a href="https://github.com/jbergler/esphome-spanet">Source on GitHub</a>
@@ -121,5 +129,5 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            dist/espa-mini-v1.factory.bin
-            dist/espa-mini-v1.ota.bin
+            dist/espa-mini-v1/espa-mini-v1.factory.bin
+            dist/espa-mini-v1/espa-mini-v1.ota.bin
