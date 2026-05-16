@@ -60,7 +60,7 @@ bool SpaNetLightEffectSelect::request_light_effect_mode_(uint8_t mode) {
   this->parent_->enqueue_command_(Command{
       .kind = CommandKind::kLightEffectMode,
       .payload = "S07:" + mode_str,
-      .expected_ack = mode_str,
+      .expected_acks = {mode_str},
       .timeout_ms = COMMAND_TIMEOUT_MS,
       .triggers_rf_poll = true,
   });

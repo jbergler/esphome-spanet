@@ -91,7 +91,7 @@ bool SpaNetClimate::request_setpoint_temperature_(float target_c) {
   this->parent_->enqueue_command_(Command{
       .kind = CommandKind::kSetpointWrite,
       .payload = "W40:" + std::to_string(maybe_target_tenths.value()),
-      .expected_ack = std::to_string(maybe_target_tenths.value()),
+      .expected_acks = {std::to_string(maybe_target_tenths.value())},
       .timeout_ms = COMMAND_TIMEOUT_MS,
       .triggers_rf_poll = true,
   });

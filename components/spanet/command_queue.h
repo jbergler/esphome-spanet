@@ -13,6 +13,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 #include <utility>
 
 static const char *const TAG = "spanet.cmdq";
@@ -34,7 +35,7 @@ enum class CommandKind {
 struct Command {
   CommandKind kind;
   std::string payload;
-  std::optional<std::string> expected_ack;
+  std::vector<std::string> expected_acks;
   // Optional second-stage completion check for multi-line responses.
   std::function<bool(const std::string &)> completion_predicate;
   uint32_t timeout_ms;
@@ -46,7 +47,8 @@ struct Command {
 struct InFlightCommand {
   Command command;
   uint32_t sent_at_ms;
-  bool initial_ack_matched{false};
+  size_t expected_ack_index{0};
+  bool expected_ack_matched{false};
 };
 
 enum class EnqueueResult {
@@ -95,7 +97,8 @@ inline CommandQueue::CommandQueue(SendFn send_fn, NowMsFn now_ms_fn, size_t max_
 }
 
 inline EnqueueResult CommandQueue::enqueue(Command command) {
-  ESP_LOGD(TAG, "enqueue called: kind=%d payload='%s'", static_cast<int>(command.kind), command.payload.c_str());
+  ESP_LOGD(TAG, "enqueue called: kind=%d payload='%s', expected_acks=%zu", static_cast<int>(command.kind),
+           command.payload.c_str(), command.expected_acks.size());
   if (command.kind == CommandKind::kRfPoll && this->has_pending_kind(CommandKind::kRfPoll)) {
     return EnqueueResult::kDroppedDuplicateRfPoll;
   }
@@ -117,33 +120,53 @@ inline AckResult CommandQueue::acknowledge(const std::string &message, InFlightC
   }
 
   auto &in_flight = this->in_flight_command_.value();
-  if (in_flight.command.completion_predicate) {
-    if (!in_flight.initial_ack_matched) {
-      if (message != in_flight.command.expected_ack.value()) {
-        ESP_LOGD(TAG, "Message '%s' did not match expected ack '%s' for in-flight command", message.c_str(),
-                 in_flight.command.expected_ack.value().c_str());
-        return AckResult::kUnmatchedAck;
+  bool found_match = false;
+
+  if (in_flight.command.expected_acks.empty()) {
+    in_flight.expected_ack_matched = true;
+  }
+
+  if (in_flight.expected_ack_index < in_flight.command.expected_acks.size()) {
+    // Start by trying to match against the next expected ack
+    if (message == in_flight.command.expected_acks[in_flight.expected_ack_index]) {
+      if (matched_command != nullptr)
+        *matched_command = in_flight;
+      in_flight.expected_ack_index++;
+      found_match = true;
+
+      // Are we done?
+      if (in_flight.expected_ack_index >= in_flight.command.expected_acks.size()) {
+        in_flight.expected_ack_matched = true;
       }
-
-      in_flight.initial_ack_matched = true;
+    }
+  }
+  if (in_flight.expected_ack_matched) {
+    bool completion_predicate_satisfied =
+        !in_flight.command.completion_predicate || in_flight.command.completion_predicate(message);
+    if (completion_predicate_satisfied) {
+      if (matched_command != nullptr)
+        *matched_command = in_flight;
+      this->in_flight_command_.reset();
+      return AckResult::kMatched;
+    } else {
       return AckResult::kInProgress;
     }
+  }
 
-    if (!in_flight.command.completion_predicate(message)) {
-      return AckResult::kInProgress;
+  if (found_match) {
+    return AckResult::kInProgress;
+  } else {
+    auto remaining_ack_string = std::string();
+    for (size_t i = in_flight.expected_ack_index; i < in_flight.command.expected_acks.size(); i++) {
+      if (!remaining_ack_string.empty()) {
+        remaining_ack_string += ", ";
+      }
+      remaining_ack_string += "'" + in_flight.command.expected_acks[i] + "'";
     }
-  } else if (message != in_flight.command.expected_ack.value()) {
-    ESP_LOGD(TAG, "Message '%s' did not match expected ack '%s' for in-flight command", message.c_str(),
-             in_flight.command.expected_ack.value().c_str());
+    ESP_LOGD(TAG, "Message '%s' did not match any expected ack (%s) for in-flight command", message.c_str(),
+             remaining_ack_string.c_str());
     return AckResult::kUnmatchedAck;
   }
-
-  if (matched_command != nullptr) {
-    *matched_command = in_flight;
-  }
-
-  this->in_flight_command_.reset();
-  return AckResult::kMatched;
 }
 
 inline bool CommandQueue::expire_timed_out(uint32_t now_ms, InFlightCommand *timed_out_command, uint32_t *age_ms) {
@@ -204,7 +227,7 @@ inline void CommandQueue::maybe_send_next_() {
 
     this->send_fn_(next.payload + "\n");
 
-    if (!next.expected_ack.has_value()) {
+    if (next.expected_acks.empty()) {
       continue;
     }
 

@@ -101,11 +101,7 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
       ESP_LOGV(TAG, "Message '%s' did not match expected ack for in-flight command", message.c_str());
       break;
     case AckResult::kInProgress:
-      // RF header line is queue-internal and not a state/ack payload to route.
-      if (message == "RF:") {
-        return;
-      }
-      break;
+      return;
     case AckResult::kMatched:
       // Pre-emptively mutate state if on_success callback is set
       if (matched_command.command.on_success) {
@@ -162,7 +158,7 @@ void SpaNetComponent::update() {
   this->enqueue_command_(Command{
       .kind = CommandKind::kRfPoll,
       .payload = "RF",
-      .expected_ack = "RF:",
+      .expected_acks = {"RF:"},
       .completion_predicate = make_rf_completion_predicate(this->register_store_),
       .timeout_ms = RF_POLL_TIMEOUT_MS,
       .triggers_rf_poll = false,
@@ -400,10 +396,11 @@ std::optional<Command> SpaNetComponent::make_time_sync_command_(const std::tm &t
   char command_prefix[4];
   std::snprintf(command_prefix, sizeof(command_prefix), "S%02u", static_cast<unsigned>(step_index + 1));
   const std::string value_str = std::to_string(value);
+  const std::string command_str = std::string(command_prefix);
   return Command{
       .kind = CommandKind::kSetTimeWrite,
-      .payload = std::string(command_prefix) + ":" + value_str,
-      .expected_ack = command_prefix,
+      .payload = command_str + ":" + value_str,
+      .expected_acks = {value_str, command_str},
       .timeout_ms = timeout_ms,
       .triggers_rf_poll = false,
       .on_success = std::move(on_success),

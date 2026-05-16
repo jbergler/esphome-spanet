@@ -209,7 +209,7 @@ bool SpaNetPumpFan::request_pump_mode_(int raw_mode) {
   this->parent_->enqueue_command_(Command{
       .kind = CommandKind::kPumpWrite,
       .payload = command_prefix + ":" + std::to_string(command_mode),
-      .expected_ack = command_prefix + "-OK",
+      .expected_acks = {command_prefix + "-OK"},
       .timeout_ms = COMMAND_TIMEOUT_MS,
       .triggers_rf_poll = true,
   });

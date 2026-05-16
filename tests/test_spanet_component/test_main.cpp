@@ -22,7 +22,7 @@ TEST(CommandQueueTest, AckedCommandBlocksQueueUntilAck) {
   EXPECT_EQ(manager.enqueue(Command{
                 .kind = CommandKind::kSetpointWrite,
                 .payload = "W40:390",
-                .expected_ack = "390",
+                .expected_acks = {"390"},
                 .timeout_ms = 1500,
             }),
             EnqueueResult::kEnqueued);
@@ -30,7 +30,7 @@ TEST(CommandQueueTest, AckedCommandBlocksQueueUntilAck) {
   EXPECT_EQ(manager.enqueue(Command{
                 .kind = CommandKind::kRfPoll,
                 .payload = "RF",
-                .expected_ack = std::nullopt,
+                .expected_acks = {},
                 .timeout_ms = 0,
             }),
             EnqueueResult::kEnqueued);
@@ -55,13 +55,13 @@ TEST(CommandQueueTest, TimeoutAdvancesQueue) {
   manager.enqueue(Command{
       .kind = CommandKind::kSetpointWrite,
       .payload = "W40:390",
-      .expected_ack = "390",
+      .expected_acks = {"390"},
       .timeout_ms = 500,
   });
   manager.enqueue(Command{
       .kind = CommandKind::kRfPoll,
       .payload = "RF",
-      .expected_ack = std::nullopt,
+      .expected_acks = {},
       .timeout_ms = 0,
   });
 
@@ -83,13 +83,13 @@ TEST(CommandQueueTest, UnmatchedAckKeepsInFlightCommand) {
   manager.enqueue(Command{
       .kind = CommandKind::kSetpointWrite,
       .payload = "W40:390",
-      .expected_ack = "390",
+      .expected_acks = {"390"},
       .timeout_ms = 1500,
   });
   manager.enqueue(Command{
       .kind = CommandKind::kRfPoll,
       .payload = "RF",
-      .expected_ack = std::nullopt,
+      .expected_acks = {},
       .timeout_ms = 0,
   });
   ASSERT_EQ(writes.size(), 1u);
@@ -106,7 +106,7 @@ TEST(CommandQueueTest, LightColorAckAdvancesQueue) {
   EXPECT_EQ(manager.enqueue(Command{
                 .kind = CommandKind::kLightColor,
                 .payload = "S10:12",
-                .expected_ack = "12",
+                .expected_acks = {"12"},
                 .timeout_ms = 1500,
             }),
             EnqueueResult::kEnqueued);
@@ -114,7 +114,7 @@ TEST(CommandQueueTest, LightColorAckAdvancesQueue) {
   EXPECT_EQ(manager.enqueue(Command{
                 .kind = CommandKind::kRfPoll,
                 .payload = "RF",
-                .expected_ack = std::nullopt,
+                .expected_acks = {},
                 .timeout_ms = 0,
             }),
             EnqueueResult::kEnqueued);
@@ -140,19 +140,19 @@ TEST(CommandQueueTest, SetTimeSequenceAdvancesOnAck) {
   manager.enqueue(Command{
       .kind = CommandKind::kSetTimeWrite,
       .payload = "S01:2026",
-      .expected_ack = "S01",
+      .expected_acks = {"2026", "S01"},
       .timeout_ms = 1500,
   });
   manager.enqueue(Command{
       .kind = CommandKind::kSetTimeWrite,
       .payload = "S02:5",
-      .expected_ack = "S02",
+      .expected_acks = {"5", "S02"},
       .timeout_ms = 1500,
   });
   manager.enqueue(Command{
       .kind = CommandKind::kSetTimeWrite,
       .payload = "S03:16",
-      .expected_ack = "S03",
+      .expected_acks = {"16", "S03"},
       .timeout_ms = 1500,
   });
 
@@ -160,15 +160,16 @@ TEST(CommandQueueTest, SetTimeSequenceAdvancesOnAck) {
   EXPECT_EQ(writes[0], "S01:2026\n");
 
   InFlightCommand matched;
-  EXPECT_EQ(manager.acknowledge("2026", &matched), AckResult::kUnmatchedAck);
+  EXPECT_EQ(manager.acknowledge("2026", &matched), AckResult::kInProgress);
   EXPECT_EQ(manager.acknowledge("S01", &matched), AckResult::kMatched);
   EXPECT_EQ(matched.command.kind, CommandKind::kSetTimeWrite);
+  EXPECT_EQ(manager.in_flight_command_.has_value(), false);
   manager.maybe_send_next_();
 
   ASSERT_EQ(writes.size(), 2u);
   EXPECT_EQ(writes[1], "S02:5\n");
 
-  EXPECT_EQ(manager.acknowledge("5", &matched), AckResult::kUnmatchedAck);
+  EXPECT_EQ(manager.acknowledge("5", &matched), AckResult::kInProgress);
   EXPECT_EQ(manager.acknowledge("S02", &matched), AckResult::kMatched);
   manager.maybe_send_next_();
 
@@ -185,13 +186,13 @@ TEST(CommandQueueTest, SetTimeTimeoutAdvancesToRetryCandidate) {
   manager.enqueue(Command{
       .kind = CommandKind::kSetTimeWrite,
       .payload = "S04:23",
-      .expected_ack = "S04",
+      .expected_acks = {"S04"},
       .timeout_ms = 500,
   });
   manager.enqueue(Command{
       .kind = CommandKind::kSetTimeWrite,
       .payload = "S04:23",
-      .expected_ack = "S04",
+      .expected_acks = {"S04"},
       .timeout_ms = 500,
   });
 
@@ -214,7 +215,7 @@ TEST(CommandQueueTest, TimeoutDoesNotFireBeforeBoundary) {
   manager.enqueue(Command{
       .kind = CommandKind::kSetpointWrite,
       .payload = "W40:390",
-      .expected_ack = "390",
+      .expected_acks = {"390"},
       .timeout_ms = 500,
   });
   now_ms = 599;
@@ -229,7 +230,7 @@ TEST(CommandQueueTest, ZeroTimeoutNeverExpiresInFlightCommand) {
   manager.enqueue(Command{
       .kind = CommandKind::kSetpointWrite,
       .payload = "W40:390",
-      .expected_ack = "390",
+      .expected_acks = {"390"},
       .timeout_ms = 0,  // No timeout
   });
   now_ms = 10000;
@@ -245,14 +246,14 @@ TEST(CommandQueueTest, StagedRfAckKeepsQueueBlockedUntilSentinel) {
   manager.enqueue(Command{
       .kind = CommandKind::kRfPoll,
       .payload = "RF",
-      .expected_ack = "RF:",
+      .expected_acks = {"RF:"},
       .completion_predicate = [](const std::string &message) { return message == ",RG,1,:"; },
       .timeout_ms = 5000,
   });
   manager.enqueue(Command{
       .kind = CommandKind::kSetpointWrite,
       .payload = "W40:390",
-      .expected_ack = "390",
+      .expected_acks = {"390"},
       .timeout_ms = 1500,
   });
 
@@ -282,7 +283,7 @@ TEST(CommandQueueTest, StagedRfAllowsReSentinelCompletion) {
   manager.enqueue(Command{
       .kind = CommandKind::kRfPoll,
       .payload = "RF",
-      .expected_ack = "RF:",
+      .expected_acks = {"RF:"},
       .completion_predicate =
           [](const std::string &message) { return message.rfind(",RE,", 0) == 0 || message.rfind(",RG,", 0) == 0; },
       .timeout_ms = 5000,
@@ -290,7 +291,7 @@ TEST(CommandQueueTest, StagedRfAllowsReSentinelCompletion) {
   manager.enqueue(Command{
       .kind = CommandKind::kLightColor,
       .payload = "S10:12",
-      .expected_ack = "12",
+      .expected_acks = {"12"},
       .timeout_ms = 1500,
   });
 
@@ -311,14 +312,14 @@ TEST(CommandQueueTest, StagedRfTimeoutAdvancesQueueAfterAckPhase) {
   manager.enqueue(Command{
       .kind = CommandKind::kRfPoll,
       .payload = "RF",
-      .expected_ack = "RF:",
+      .expected_acks = {"RF:"},
       .completion_predicate = [](const std::string &message) { return message == ",RG,1,:"; },
       .timeout_ms = 500,
   });
   manager.enqueue(Command{
       .kind = CommandKind::kPumpWrite,
       .payload = "S15:1",
-      .expected_ack = "1",
+      .expected_acks = {"1"},
       .timeout_ms = 1500,
   });
 

@@ -189,7 +189,7 @@ bool SpaNetLight::request_light_toggle_(bool desired_state) {
   this->parent_->enqueue_command_(Command{
       .kind = CommandKind::kLightToggle,
       .payload = "W14",
-      .expected_ack = "W14",
+      .expected_acks = {"W14"},
       .timeout_ms = COMMAND_TIMEOUT_MS,
       .triggers_rf_poll = true,
   });
@@ -202,7 +202,7 @@ bool SpaNetLight::request_light_brightness_(uint8_t esphome_brightness) {
   this->parent_->enqueue_command_(Command{
       .kind = CommandKind::kLightBrightness,
       .payload = "S08:" + device_brightness_str,
-      .expected_ack = device_brightness_str,
+      .expected_acks = {device_brightness_str},
       .timeout_ms = COMMAND_TIMEOUT_MS,
       .triggers_rf_poll = true,
   });
@@ -215,7 +215,7 @@ bool SpaNetLight::request_light_color_(uint16_t hue_degrees) {
   this->parent_->enqueue_command_(Command{
       .kind = CommandKind::kLightColor,
       .payload = "S10:" + color_index_str,
-      .expected_ack = color_index_str,
+      .expected_acks = {color_index_str},
       .timeout_ms = COMMAND_TIMEOUT_MS,
       .triggers_rf_poll = true,
   });
