@@ -142,18 +142,21 @@ TEST(CommandQueueTest, SetTimeSequenceAdvancesOnAck) {
       .payload = "S01:2026",
       .expected_acks = {"2026", "S01"},
       .timeout_ms = 1500,
+      .allow_duplicates = true,
   });
   manager.enqueue(Command{
       .kind = CommandKind::kSetTimeWrite,
       .payload = "S02:5",
       .expected_acks = {"5", "S02"},
       .timeout_ms = 1500,
+      .allow_duplicates = true,
   });
   manager.enqueue(Command{
       .kind = CommandKind::kSetTimeWrite,
       .payload = "S03:16",
       .expected_acks = {"16", "S03"},
       .timeout_ms = 1500,
+      .allow_duplicates = true,
   });
 
   ASSERT_EQ(writes.size(), 1u);
@@ -188,12 +191,14 @@ TEST(CommandQueueTest, SetTimeTimeoutAdvancesToRetryCandidate) {
       .payload = "S04:23",
       .expected_acks = {"S04"},
       .timeout_ms = 500,
+      .allow_duplicates = true,
   });
   manager.enqueue(Command{
       .kind = CommandKind::kSetTimeWrite,
       .payload = "S04:23",
       .expected_acks = {"S04"},
       .timeout_ms = 500,
+      .allow_duplicates = true,
   });
 
   ASSERT_EQ(writes.size(), 1u);
