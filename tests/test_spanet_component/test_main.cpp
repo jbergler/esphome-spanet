@@ -39,7 +39,7 @@ TEST(CommandQueueTest, AckedCommandBlocksQueueUntilAck) {
   EXPECT_EQ(writes[0], "W40:390\n");
 
   InFlightCommand matched;
-  EXPECT_EQ(manager.acknowledge("390", &matched), AckResult::kMatched);
+  EXPECT_EQ(manager.acknowledge("390", &matched), AckResult::kCompleted);
   manager.maybe_send_next_();
 
   ASSERT_EQ(writes.size(), 2u);
@@ -123,7 +123,7 @@ TEST(CommandQueueTest, LightColorAckAdvancesQueue) {
   EXPECT_EQ(writes[0], "S10:12\n");
 
   InFlightCommand matched;
-  EXPECT_EQ(manager.acknowledge("12", &matched), AckResult::kMatched);
+  EXPECT_EQ(manager.acknowledge("12", &matched), AckResult::kCompleted);
   EXPECT_EQ(matched.command.kind, CommandKind::kLightColor);
   manager.maybe_send_next_();
 
@@ -161,7 +161,7 @@ TEST(CommandQueueTest, SetTimeSequenceAdvancesOnAck) {
 
   InFlightCommand matched;
   EXPECT_EQ(manager.acknowledge("2026", &matched), AckResult::kInProgress);
-  EXPECT_EQ(manager.acknowledge("S01", &matched), AckResult::kMatched);
+  EXPECT_EQ(manager.acknowledge("S01", &matched), AckResult::kCompleted);
   EXPECT_EQ(matched.command.kind, CommandKind::kSetTimeWrite);
   EXPECT_EQ(manager.in_flight_command_.has_value(), false);
   manager.maybe_send_next_();
@@ -170,7 +170,7 @@ TEST(CommandQueueTest, SetTimeSequenceAdvancesOnAck) {
   EXPECT_EQ(writes[1], "S02:5\n");
 
   EXPECT_EQ(manager.acknowledge("5", &matched), AckResult::kInProgress);
-  EXPECT_EQ(manager.acknowledge("S02", &matched), AckResult::kMatched);
+  EXPECT_EQ(manager.acknowledge("S02", &matched), AckResult::kCompleted);
   manager.maybe_send_next_();
 
   ASSERT_EQ(writes.size(), 3u);
@@ -267,7 +267,7 @@ TEST(CommandQueueTest, StagedRfAckKeepsQueueBlockedUntilSentinel) {
   ASSERT_EQ(writes.size(), 1u);
 
   InFlightCommand matched;
-  EXPECT_EQ(manager.acknowledge(",RG,1,:", &matched), AckResult::kMatched);
+  EXPECT_EQ(manager.acknowledge(",RG,1,:", &matched), AckResult::kCompleted);
   EXPECT_EQ(matched.command.kind, CommandKind::kRfPoll);
   manager.maybe_send_next_();
 
@@ -297,7 +297,7 @@ TEST(CommandQueueTest, StagedRfAllowsReSentinelCompletion) {
 
   EXPECT_EQ(manager.acknowledge("RF:", nullptr), AckResult::kInProgress);
   EXPECT_EQ(manager.acknowledge(",R6,1,2,:", nullptr), AckResult::kInProgress);
-  EXPECT_EQ(manager.acknowledge(",RE,0,0,:", nullptr), AckResult::kMatched);
+  EXPECT_EQ(manager.acknowledge(",RE,0,0,:", nullptr), AckResult::kCompleted);
   manager.maybe_send_next_();
 
   ASSERT_EQ(writes.size(), 2u);
@@ -359,8 +359,8 @@ TEST(CommandQueueTest, StagedRfIntermediateLinesAreVisibleToStateStore) {
   auto dispatch = [&](const std::string &message) {
     InFlightCommand matched;
     auto result = manager.acknowledge(message, &matched);
-    if (result != AckResult::kMatched) {
-      if (SpaNetParser::classify_message(message) == MessageType::kStateUpdate) {
+    if (result != AckResult::kCompleted) {
+      if (SpaNetParser::is_register_line(message)) {
         store.update(message);
       }
     }
@@ -380,7 +380,7 @@ TEST(CommandQueueTest, StagedRfIntermediateLinesAreVisibleToStateStore) {
   EXPECT_EQ(store.get_state().controller_status.major_version, 6);
 
   // Complete the poll with the sentinel line chosen by the predicate.
-  EXPECT_EQ(dispatch(",RG,1,1,1,1,1,1,0-,1-2-0324,1-1-01,0-,0-,0,0,0,1808,:"), AckResult::kMatched);
+  EXPECT_EQ(dispatch(",RG,1,1,1,1,1,1,0-,1-2-0324,1-1-01,0-,0-,0,0,0,1808,:"), AckResult::kCompleted);
 }
 
 // Test helper: creates RegisterStore with controlled version and returns real completion predicate

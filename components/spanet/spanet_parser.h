@@ -693,25 +693,17 @@ class SpaNetParser {
   //   kUnknown     -> log and discard
   //
   // Standalone register continuation lines (",R3,...") are classified as kStateUpdate.
-  static MessageType classify_message(const std::string &line) {
+  static bool is_register_line(const std::string &line) {
     auto trimmed = trim_(line);
 
-    if (!extract_register_label(line).empty()) {
-      return MessageType::kStateUpdate;
-    }
-
-    if (!trimmed.empty() && (trimmed[0] == 'S' || trimmed[0] == 'W')) {
-      return MessageType::kAck;
-    }
-
-    return MessageType::kUnknown;
+    return !extract_register_label(line).empty();
   }
 
   // Parses one kStateUpdate UART line into a typed AnyRegisterLine.
   // Returns nullopt if the line does not contain a recognisable register
   // pattern.
   //
-  // Handles register lines in the format: ",R2:1,2,3"
+  // Handles register lines in the format: ",R2,1,2,3"
   static std::optional<AnyRegisterLine> parse_register_line(const std::string &line) {
     auto content = trim_(line);
 

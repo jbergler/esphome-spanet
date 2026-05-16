@@ -341,7 +341,7 @@ TEST(ControllerStatusIntegrationTest, ParsesFullExamplePayloadFromFile) {
     if (!line.has_value()) {
       continue;
     }
-    if (SpaNetParser::classify_message(*line) == MessageType::kStateUpdate) {
+    if (SpaNetParser::is_register_line(*line)) {
       store.update(*line);
     }
   }

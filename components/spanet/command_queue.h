@@ -61,7 +61,7 @@ enum class AckResult {
   kNoInFlightCommand,
   kUnmatchedAck,
   kInProgress,
-  kMatched,
+  kCompleted,
 };
 
 class CommandQueue {
@@ -147,7 +147,7 @@ inline AckResult CommandQueue::acknowledge(const std::string &message, InFlightC
       if (matched_command != nullptr)
         *matched_command = in_flight;
       this->in_flight_command_.reset();
-      return AckResult::kMatched;
+      return AckResult::kCompleted;
     } else {
       return AckResult::kInProgress;
     }

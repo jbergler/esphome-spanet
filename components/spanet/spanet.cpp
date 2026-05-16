@@ -101,10 +101,8 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
       ESP_LOGV(TAG, "Message '%s' did not match expected ack for in-flight command", message.c_str());
       break;
     case AckResult::kInProgress:
-      // Intermediate RF poll lines must still update the register store (e.g. R3
-      // sets major_version; it only ever arrives inside an RF poll response).
       break;
-    case AckResult::kMatched:
+    case AckResult::kCompleted:
       // Pre-emptively mutate state if on_success callback is set
       if (matched_command.command.on_success) {
         matched_command.command.on_success(this->register_store_.get_mutable_state());
@@ -121,21 +119,16 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
       }
       // If the matched message is also a state update (e.g., RG/RE sentinel for staged RF),
       // fall through to process it as such.
-      if (SpaNetParser::classify_message(message) == MessageType::kStateUpdate) {
+      if (SpaNetParser::is_register_line(message)) {
         break;
       }
       return;
   }
 
-  switch (SpaNetParser::classify_message(message)) {
-    case MessageType::kStateUpdate:
-      this->on_state_update_message_(message);
-      break;
-    case MessageType::kAck:
-      break;
-    case MessageType::kUnknown:
-      ESP_LOGW(TAG, "Ignoring unknown message '%s'", message.c_str());
-      break;
+  if (SpaNetParser::is_register_line(message)) {
+    this->on_state_update_message_(message);
+  } else {
+    ESP_LOGW(TAG, "Ignoring unknown message '%s'", message.c_str());
   }
 }
 

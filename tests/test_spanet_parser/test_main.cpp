@@ -7,13 +7,13 @@ namespace esphome::spanet::tests {
 // ── classify_message ─────────────────────────────────────────────────────────
 
 TEST(ClassifyMessageTest, StandaloneRegisterLineIsStateUpdate) {
-  EXPECT_EQ(SpaNetParser::classify_message(",R3,10,1,4,4,SW V6,:"), MessageType::kStateUpdate);
-  EXPECT_EQ(SpaNetParser::classify_message(",RE,0,0,0,0,:*"), MessageType::kStateUpdate);
+  EXPECT_TRUE(SpaNetParser::is_register_line(",R3,10,1,4,4,SW V6,:"));
+  EXPECT_TRUE(SpaNetParser::is_register_line(",RE,0,0,0,0,:*"));
 }
 
 TEST(ClassifyMessageTest, UnrecognisedLinesAreUnknown) {
-  EXPECT_EQ(SpaNetParser::classify_message("HELLO"), MessageType::kUnknown);
-  EXPECT_EQ(SpaNetParser::classify_message(""), MessageType::kUnknown);
+  EXPECT_FALSE(SpaNetParser::is_register_line("HELLO"));
+  EXPECT_FALSE(SpaNetParser::is_register_line(""));
 }
 
 // ── parse_register_line
