@@ -19,14 +19,12 @@ jobs:
       - name: Set version from tag
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
-      # Cache the ESP-IDF toolchain and PlatformIO packages inside the workspace
-      # so Docker volume mounts can access them without root/permission friction.
+      # Cache the ESP-IDF toolchain. The ESPHome container uses /cache for its
+      # PlatformIO and ESP-IDF toolchain data, so we mount a workspace subdir there.
       - name: Cache toolchain
         uses: actions/cache@v4
         with:
-          path: |
-            .docker-cache/platformio
-            .docker-cache/espressif
+          path: .docker-cache
           key: toolchain-${{ hashFiles('espa-mini-v1.yaml', 'components/spanet/**') }}
           restore-keys: |
             toolchain-
@@ -35,14 +33,13 @@ jobs:
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/config" \
-            -v "${{ github.workspace }}/.docker-cache/platformio:/root/.platformio" \
-            -v "${{ github.workspace }}/.docker-cache/espressif:/root/.espressif" \
+            -v "${{ github.workspace }}/.docker-cache:/cache" \
             ghcr.io/esphome/esphome:stable \
-            compile --substitution "project_version=${{ env.VERSION }}" espa-mini-v1.yaml
+            -s project_version "${{ env.VERSION }}" compile espa-mini-v1.yaml
 
       # Docker runs as root; reclaim ownership before subsequent steps.
       - name: Fix file ownership
-        run: sudo chown -R "$USER:$USER" .esphome .docker-cache
+        run: sudo chown -R "$USER:$USER" .esphome .docker-cache || true
 
       - name: Assemble dist
         run: |
