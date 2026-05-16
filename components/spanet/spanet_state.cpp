@@ -91,15 +91,15 @@ static const std::string &get_rg_install_state(const RegisterRG &rg, size_t pump
 static const std::string &get_r5_pump_mode(const RegisterR5 &r5, size_t pump_index) {
   switch (pump_index) {
     case 0:
-      return r5.status_17;
+      return r5.pump1_mode;
     case 1:
-      return r5.status_18;
+      return r5.pump2_mode;
     case 2:
-      return r5.status_19;
+      return r5.pump3_mode;
     case 3:
-      return r5.status_20;
+      return r5.pump4_mode;
     default:
-      return r5.status_21;
+      return r5.pump5_mode;
   }
 }
 
@@ -236,10 +236,10 @@ void RegisterStore::update_controller_status() {
 
   if (this->registers_.r5.has_value()) {
     const auto &r5 = this->registers_.r5.value();
-    this->state.temperatures.water_c = parse_tenths_celsius(r5.status_14);
-    this->state.climate.heating_active = parse_bool_flag(r5.status_11);
-    this->state.spa_operating.ozone_active = parse_bool_flag(r5.status_10);
-    this->state.spa_operating.clean_cycle_active = parse_bool_flag(r5.status_15);
+    this->state.temperatures.water_c = parse_tenths_celsius(r5.water_temperature);
+    this->state.climate.heating_active = parse_bool_flag(r5.heater_relay);
+    this->state.spa_operating.ozone_active = parse_bool_flag(r5.ozone_relay);
+    this->state.spa_operating.clean_cycle_active = parse_bool_flag(r5.clean_cycle);
   }
 
   if (this->registers_.r6.has_value()) {
@@ -253,7 +253,7 @@ void RegisterStore::update_controller_status() {
     const auto &r6 = this->registers_.r6.value();
 
     // R5[14] (status_13) = rb_tp_light (light on/off)
-    auto light_on = parse_bool_flag(r5.status_13);
+    auto light_on = parse_bool_flag(r5.light_relay);
     if (light_on.has_value()) {
       this->state.light.is_on = light_on.value();
     }

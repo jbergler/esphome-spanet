@@ -183,32 +183,32 @@ struct RegisterR4 {
 struct RegisterR5 {
   static constexpr const char *kLabel = "R5";
 
-  std::string status_0;
-  std::string status_1;
-  std::string status_2;
-  std::string status_3;
-  std::string status_4;
-  std::string status_5;
-  std::string status_6;
-  std::string status_7;
-  std::string status_8;
-  std::string status_9;
-  std::string status_10;
-  std::string status_11;
-  std::string status_12;
-  std::string status_13;
-  std::string status_14;
-  std::string status_15;
-  std::string status_16;
-  std::string status_17;
-  std::string status_18;
-  std::string status_19;
-  std::string status_20;
-  std::string status_21;
-  std::string status_22;
-  std::string status_23;
-  std::string status_24;
-  std::string status_25;
+  std::string unknown_1;
+  std::string unknown_2;
+  std::string unknown_3;
+  std::string unknown_4;
+  std::string unknown_5;
+  std::string unknown_6;
+  std::string unknown_7;
+  std::string unknown_8;
+  std::string unknown_9;
+  std::string sleep_relay;
+  std::string ozone_relay;
+  std::string heater_relay;
+  std::string auto_relay;
+  std::string light_relay;
+  std::string water_temperature;
+  std::string clean_cycle;
+  std::string unknown_17;
+  std::string pump1_mode;
+  std::string pump2_mode;
+  std::string pump3_mode;
+  std::string pump4_mode;
+  std::string pump5_mode;
+  std::string unknown_23;
+  std::string unknown_24;
+  std::string unknown_25;
+  std::string unknown_26;
 
   static std::optional<RegisterR5> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 25) {
@@ -216,32 +216,32 @@ struct RegisterR5 {
     }
 
     RegisterR5 out;
-    out.status_0 = fields[0];
-    out.status_1 = fields[1];
-    out.status_2 = fields[2];
-    out.status_3 = fields[3];
-    out.status_4 = fields[4];
-    out.status_5 = fields[5];
-    out.status_6 = fields[6];
-    out.status_7 = fields[7];
-    out.status_8 = fields[8];
-    out.status_9 = fields[9];
-    out.status_10 = fields[10];
-    out.status_11 = fields[11];
-    out.status_12 = fields[12];
-    out.status_13 = fields[13];
-    out.status_14 = fields[14];
-    out.status_15 = fields[15];
-    out.status_16 = fields[16];
-    out.status_17 = fields[17];
-    out.status_18 = fields[18];
-    out.status_19 = fields[19];
-    out.status_20 = fields[20];
-    out.status_21 = fields[21];
-    out.status_22 = fields[22];
-    out.status_23 = fields[23];
-    out.status_24 = fields[24];
-    out.status_25 = fields[25];
+    out.unknown_1 = fields[0];
+    out.unknown_2 = fields[1];
+    out.unknown_3 = fields[2];
+    out.unknown_4 = fields[3];
+    out.unknown_5 = fields[4];
+    out.unknown_6 = fields[5];
+    out.unknown_7 = fields[6];
+    out.unknown_8 = fields[7];
+    out.unknown_9 = fields[8];
+    out.sleep_relay = fields[9];
+    out.ozone_relay = fields[10];
+    out.heater_relay = fields[11];
+    out.auto_relay = fields[12];
+    out.light_relay = fields[13];
+    out.water_temperature = fields[14];
+    out.clean_cycle = fields[15];
+    out.unknown_17 = fields[16];
+    out.pump1_mode = fields[17];
+    out.pump2_mode = fields[18];
+    out.pump3_mode = fields[19];
+    out.pump4_mode = fields[20];
+    out.pump5_mode = fields[21];
+    out.unknown_23 = fields[22];
+    out.unknown_24 = fields[23];
+    out.unknown_25 = fields[24];
+    out.unknown_26 = fields[25];
     return out;
   }
 };
@@ -319,13 +319,13 @@ struct RegisterR6 {
 struct RegisterR7 {
   static constexpr const char *kLabel = "R7";
 
-  std::string wcln_time;
+  std::string water_clean_time;
   std::string ozone_off;
   std::string temperature_units;
   std::string ozone_24hrs;
-  std::string cjet;
+  std::string circulation_jet;
   std::string circulation_24hrs;
-  std::string vele;
+  std::string variable_element;
   std::string unknown_8;
   std::string unknown_9;
   std::string unknown_10;
@@ -340,15 +340,15 @@ struct RegisterR7 {
   std::string ser_1;
   std::string ser_2;
   std::string ser_3;
-  std::string vmax;
-  std::string ahys;
-  std::string huse;
-  std::string hele;
-  std::string hpmp;
-  std::string pmin;
-  std::string pflt;
-  std::string phtr;
-  std::string pmax;
+  std::string variable_pump_max_speed;
+  std::string adaptive_hysteresis;
+  std::string heater_use;
+  std::string heater_element;
+  std::string heat_pump;
+  std::string power_min;
+  std::string power_filter;
+  std::string power_heater;
+  std::string power_max;
   std::string unknown_31;
 
   static std::optional<RegisterR7> from_fields(const std::vector<std::string> &fields) {
@@ -357,13 +357,13 @@ struct RegisterR7 {
     }
 
     RegisterR7 out;
-    out.wcln_time = fields[0];
+    out.water_clean_time = fields[0];
     out.ozone_off = fields[1];
     out.temperature_units = fields[2];
     out.ozone_24hrs = fields[3];
-    out.cjet = fields[4];
+    out.circulation_jet = fields[4];
     out.circulation_24hrs = fields[5];
-    out.vele = fields[6];
+    out.variable_element = fields[6];
     out.unknown_8 = fields[7];
     out.unknown_9 = fields[8];
     out.unknown_10 = fields[9];
@@ -378,15 +378,15 @@ struct RegisterR7 {
     out.ser_1 = fields[18];
     out.ser_2 = fields[19];
     out.ser_3 = fields[20];
-    out.vmax = fields[21];
-    out.ahys = fields[22];
-    out.huse = fields[23];
-    out.hele = fields[24];
-    out.hpmp = fields[25];
-    out.pmin = fields[26];
-    out.pflt = fields[27];
-    out.phtr = fields[28];
-    out.pmax = fields[29];
+    out.variable_pump_max_speed = fields[21];
+    out.adaptive_hysteresis = fields[22];
+    out.heater_use = fields[23];
+    out.heater_element = fields[24];
+    out.heat_pump = fields[25];
+    out.power_min = fields[26];
+    out.power_filter = fields[27];
+    out.power_heater = fields[28];
+    out.power_max = fields[29];
     out.unknown_31 = fields[30];
     return out;
   }
@@ -396,17 +396,17 @@ struct RegisterR9 {
   static constexpr const char *kLabel = "R9";
 
   std::string fault_code;
-  std::string accum_1;
-  std::string accum_2;
-  std::string accum_3;
-  std::string accum_4;
-  std::string accum_5;
-  std::string accum_6;
-  std::string accum_7;
-  std::string accum_8;
-  std::string accum_9;
-  std::string accum_10;
-  std::string accum_11;
+  std::string fault_hours;
+  std::string fault_time;
+  std::string fault_error;
+  std::string fault_current;
+  std::string fault_voltage;
+  std::string fault_pool_temp;
+  std::string fault_heater_temp;
+  std::string fault_case_temp;
+  std::string fault_pump_state;
+  std::string fault_unknown_10;
+  std::string fault_state;
 
   static std::optional<RegisterR9> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 11) {
@@ -415,17 +415,17 @@ struct RegisterR9 {
 
     RegisterR9 out;
     out.fault_code = fields[0];
-    out.accum_1 = fields[1];
-    out.accum_2 = fields[2];
-    out.accum_3 = fields[3];
-    out.accum_4 = fields[4];
-    out.accum_5 = fields[5];
-    out.accum_6 = fields[6];
-    out.accum_7 = fields[7];
-    out.accum_8 = fields[8];
-    out.accum_9 = fields[9];
-    out.accum_10 = fields[10];
-    out.accum_11 = fields[11];
+    out.fault_hours = fields[1];
+    out.fault_time = fields[2];
+    out.fault_error = fields[3];
+    out.fault_current = fields[4];
+    out.fault_voltage = fields[5];
+    out.fault_pool_temp = fields[6];
+    out.fault_heater_temp = fields[7];
+    out.fault_case_temp = fields[8];
+    out.fault_pump_state = fields[9];
+    out.fault_unknown_10 = fields[10];
+    out.fault_state = fields[11];
     return out;
   }
 };
@@ -434,17 +434,17 @@ struct RegisterRA {
   static constexpr const char *kLabel = "RA";
 
   std::string fault_code;
-  std::string accum_1;
-  std::string accum_2;
-  std::string accum_3;
-  std::string accum_4;
-  std::string accum_5;
-  std::string accum_6;
-  std::string accum_7;
-  std::string accum_8;
-  std::string accum_9;
-  std::string accum_10;
-  std::string accum_11;
+  std::string fault_hours;
+  std::string fault_time;
+  std::string fault_error;
+  std::string fault_current;
+  std::string fault_voltage;
+  std::string fault_pool_temp;
+  std::string fault_heater_temp;
+  std::string fault_case_temp;
+  std::string fault_pump_state;
+  std::string fault_unknown_10;
+  std::string fault_state;
 
   static std::optional<RegisterRA> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 11) {
@@ -453,17 +453,17 @@ struct RegisterRA {
 
     RegisterRA out;
     out.fault_code = fields[0];
-    out.accum_1 = fields[1];
-    out.accum_2 = fields[2];
-    out.accum_3 = fields[3];
-    out.accum_4 = fields[4];
-    out.accum_5 = fields[5];
-    out.accum_6 = fields[6];
-    out.accum_7 = fields[7];
-    out.accum_8 = fields[8];
-    out.accum_9 = fields[9];
-    out.accum_10 = fields[10];
-    out.accum_11 = fields[11];
+    out.fault_hours = fields[1];
+    out.fault_time = fields[2];
+    out.fault_error = fields[3];
+    out.fault_current = fields[4];
+    out.fault_voltage = fields[5];
+    out.fault_pool_temp = fields[6];
+    out.fault_heater_temp = fields[7];
+    out.fault_case_temp = fields[8];
+    out.fault_pump_state = fields[9];
+    out.fault_unknown_10 = fields[10];
+    out.fault_state = fields[11];
     return out;
   }
 };
@@ -472,17 +472,17 @@ struct RegisterRB {
   static constexpr const char *kLabel = "RB";
 
   std::string fault_code;
-  std::string accum_1;
-  std::string accum_2;
-  std::string accum_3;
-  std::string accum_4;
-  std::string accum_5;
-  std::string accum_6;
-  std::string accum_7;
-  std::string accum_8;
-  std::string accum_9;
-  std::string accum_10;
-  std::string accum_11;
+  std::string fault_hours;
+  std::string fault_time;
+  std::string fault_error;
+  std::string fault_current;
+  std::string fault_voltage;
+  std::string fault_pool_temp;
+  std::string fault_heater_temp;
+  std::string fault_case_temp;
+  std::string fault_pump_state;
+  std::string fault_unknown_10;
+  std::string fault_state;
 
   static std::optional<RegisterRB> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 11) {
@@ -491,17 +491,17 @@ struct RegisterRB {
 
     RegisterRB out;
     out.fault_code = fields[0];
-    out.accum_1 = fields[1];
-    out.accum_2 = fields[2];
-    out.accum_3 = fields[3];
-    out.accum_4 = fields[4];
-    out.accum_5 = fields[5];
-    out.accum_6 = fields[6];
-    out.accum_7 = fields[7];
-    out.accum_8 = fields[8];
-    out.accum_9 = fields[9];
-    out.accum_10 = fields[10];
-    out.accum_11 = fields[11];
+    out.fault_hours = fields[1];
+    out.fault_time = fields[2];
+    out.fault_error = fields[3];
+    out.fault_current = fields[4];
+    out.fault_voltage = fields[5];
+    out.fault_pool_temp = fields[6];
+    out.fault_heater_temp = fields[7];
+    out.fault_case_temp = fields[8];
+    out.fault_pump_state = fields[9];
+    out.fault_unknown_10 = fields[10];
+    out.fault_state = fields[11];
     return out;
   }
 };
@@ -561,7 +561,7 @@ struct RegisterRE {
   std::string unknown_8;
   std::string unknown_9;
   std::string hp_ambient;
-  std::string hp_condensor;
+  std::string hp_condenser;
   std::string hp_compressor_state;
   std::string hp_fan_state;
   std::string hp_4w_valve;
@@ -574,13 +574,13 @@ struct RegisterRE {
   std::string hp_heat_accum_timer;
   std::string hp_sequence_timer;
   std::string hp_warning;
-  std::string frez_tmr;
-  std::string dbgn;
-  std::string dend;
-  std::string dcmp;
-  std::string dmax;
-  std::string dele;
-  std::string dpmp;
+  std::string freeze_timer;
+  std::string defrost_begin;
+  std::string defrost_end;
+  std::string defrost_comp;
+  std::string defrost_max;
+  std::string defrost_element;
+  std::string defrost_pump;
 
   static std::optional<RegisterRE> from_fields(const std::vector<std::string> &fields) {
     if (fields.size() <= 29) {
@@ -598,7 +598,7 @@ struct RegisterRE {
     out.unknown_8 = fields[7];
     out.unknown_9 = fields[8];
     out.hp_ambient = fields[9];
-    out.hp_condensor = fields[10];
+    out.hp_condenser = fields[10];
     out.hp_compressor_state = fields[11];
     out.hp_fan_state = fields[12];
     out.hp_4w_valve = fields[13];
@@ -611,13 +611,13 @@ struct RegisterRE {
     out.hp_heat_accum_timer = fields[20];
     out.hp_sequence_timer = fields[21];
     out.hp_warning = fields[22];
-    out.frez_tmr = fields[23];
-    out.dbgn = fields[24];
-    out.dend = fields[25];
-    out.dcmp = fields[26];
-    out.dmax = fields[27];
-    out.dele = fields[28];
-    out.dpmp = fields[29];
+    out.freeze_timer = fields[23];
+    out.defrost_begin = fields[24];
+    out.defrost_end = fields[25];
+    out.defrost_comp = fields[26];
+    out.defrost_max = fields[27];
+    out.defrost_element = fields[28];
+    out.defrost_pump = fields[29];
     return out;
   }
 };
