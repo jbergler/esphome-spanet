@@ -3,29 +3,47 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>eSPA Mini v1 Installer</title>
+  <title>eSPA Mini Installer</title>
   <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
   <style>
     body {
       font-family: sans-serif;
-      max-width: 640px;
+      max-width: 680px;
       margin: 3rem auto;
       padding: 0 1.5rem;
       color: #222;
     }
     h1 { margin-bottom: 0.25rem; }
     .version { color: #666; font-size: 0.9rem; margin-bottom: 2rem; }
-    esp-web-install-button { display: block; margin: 1.5rem 0; }
+    section {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    section h2 { margin: 0 0 0.25rem; }
+    .meta { color: #666; font-size: 0.85rem; margin: 0 0 1rem; }
+    esp-web-install-button { display: block; }
     footer { margin-top: 3rem; font-size: 0.8rem; color: #888; }
   </style>
 </head>
 <body>
-  <h1>eSPA Mini v1</h1>
-  <p class="version">Version 0.1.1</p>
-  <p>Connect your ESP32-S3 via USB, then click <strong>Install</strong>.</p>
-  <esp-web-install-button manifest="espa-mini-v1/manifest.json"></esp-web-install-button>
+  <h1>eSPA Mini Installer</h1>
+  <p class="version">Version 0.1.2</p>
+  <p>Connect your board via USB, select the matching hardware version, then click <strong>Install</strong>.</p>
+  
+  <section>
+    <h2>eSPA Mini v1</h2>
+    <p class="meta">ESP32-S3 &middot; devkitc-1 &mdash; GPIO15/16 UART</p>
+    <esp-web-install-button manifest="espa-mini-v1/manifest.json"></esp-web-install-button>
+  </section>
+  <section>
+    <h2>eSPA Mini v2</h2>
+    <p class="meta">ESP32-C6 &middot; devkitc-1 &mdash; GPIO20/19 UART, 8 MB flash</p>
+    <esp-web-install-button manifest="espa-mini-v2/manifest.json"></esp-web-install-button>
+  </section>
   <footer>
-    Requires Chrome or Edge with Web Serial support.
+    Requires Chrome or Edge with Web Serial support. &nbsp;
     <a href="https://github.com/jbergler/esphome-spanet">Source on GitHub</a>
   </footer>
 </body>

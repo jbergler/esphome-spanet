@@ -1,20 +1,20 @@
 {
-  "name": "eSPA Mini v1",
+  "name": "eSPA Mini v2",
   "version": "0.1.2",
   "home_assistant_domain": "esphome",
   "new_install_prompt_erase": true,
   "builds": [
     {
-      "chipFamily": "ESP32-S3",
+      "chipFamily": "ESP32-C6",
       "parts": [
         {
-          "path": "espa-mini-v1.factory.bin",
+          "path": "espa-mini-v2.factory.bin",
           "offset": 0
         }
       ],
       "ota": {
-        "path": "espa-mini-v1.ota.bin",
-        "md5": "bb20d7a64c8c2a9ef8e45ce689625c27"
+        "path": "espa-mini-v2.ota.bin",
+        "md5": "046f615b370b1cdb52b2b679bcc2fd45"
       }
     }
   ]
