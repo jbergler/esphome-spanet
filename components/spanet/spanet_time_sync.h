@@ -45,16 +45,18 @@ class SpaNetTimeSync {
 
   bool time_sync_in_progress_{false};
   uint8_t time_sync_step_index_{0};
-  bool time_sync_retry_used_{false};
+  uint8_t time_sync_retry_count_{0};
   std::tm time_sync_tm_{};
 
   static constexpr uint32_t SET_TIME_COMMAND_TIMEOUT_MS = 1500;
+  static constexpr uint32_t SET_TIME_MAX_TIMEOUT_MS = 10000;
+  static constexpr uint8_t SET_TIME_MAX_RETRIES = 2;
   static constexpr uint8_t SET_TIME_STEP_COUNT = 6;
 
   static std::optional<uint8_t> parse_time_sync_step_index(const std::string &payload);
   static std::optional<Command> make_time_sync_command(const std::tm &tm_value, uint8_t step_index,
                                                        std::function<void(State &)> on_success, uint32_t timeout_ms);
-  bool enqueue_time_sync_step(uint8_t step_index, bool retry);
+  bool enqueue_time_sync_step(uint8_t step_index);
   void handle_time_sync_step_success(uint8_t step_index);
   void abort_time_sync();
   void maybe_run_auto_time_sync(uint32_t now_ms);

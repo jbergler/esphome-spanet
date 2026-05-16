@@ -61,9 +61,9 @@ bool SpaNetTimeSync::request_set_current_time(time_t unix_time) {
   this->time_sync_tm_.tm_yday = static_cast<int>(local_time.day_of_year) - 1;
   this->time_sync_in_progress_ = true;
   this->time_sync_step_index_ = 0;
-  this->time_sync_retry_used_ = false;
+  this->time_sync_retry_count_ = 0;
 
-  if (!this->enqueue_time_sync_step(0, false)) {
+  if (!this->enqueue_time_sync_step(0)) {
     this->abort_time_sync();
     return false;
   }
@@ -111,15 +111,18 @@ void SpaNetTimeSync::on_command_timeout(const InFlightCommand &timed_out, uint32
     return;
   }
 
-  if (this->time_sync_retry_used_) {
-    ESP_LOGW(TAG, "Aborting set-time sequence after retry exhausted at step S%02u",
-             static_cast<unsigned>(this->time_sync_step_index_ + 1));
+  this->time_sync_retry_count_++;
+  if (this->time_sync_retry_count_ > SET_TIME_MAX_RETRIES) {
+    ESP_LOGW(TAG, "Aborting set-time sequence after %u attempts at step S%02u",
+             static_cast<unsigned>(SET_TIME_MAX_RETRIES + 1), static_cast<unsigned>(this->time_sync_step_index_ + 1));
     this->abort_time_sync();
     return;
   }
 
-  ESP_LOGW(TAG, "Retrying set-time step S%02u after timeout", static_cast<unsigned>(this->time_sync_step_index_ + 1));
-  this->enqueue_time_sync_step(this->time_sync_step_index_, true);
+  ESP_LOGW(TAG, "Retrying set-time step S%02u (attempt %u of %u)",
+           static_cast<unsigned>(this->time_sync_step_index_ + 1),
+           static_cast<unsigned>(this->time_sync_retry_count_ + 1), static_cast<unsigned>(SET_TIME_MAX_RETRIES + 1));
+  this->enqueue_time_sync_step(this->time_sync_step_index_);
 }
 
 std::optional<uint8_t> SpaNetTimeSync::parse_time_sync_step_index(const std::string &payload) {
@@ -182,16 +185,23 @@ std::optional<Command> SpaNetTimeSync::make_time_sync_command(const std::tm &tm_
   };
 }
 
-bool SpaNetTimeSync::enqueue_time_sync_step(uint8_t step_index, bool retry) {
+bool SpaNetTimeSync::enqueue_time_sync_step(uint8_t step_index) {
+  uint32_t timeout_ms = SET_TIME_COMMAND_TIMEOUT_MS;
+  for (uint8_t i = 0; i < this->time_sync_retry_count_; i++) {
+    timeout_ms *= 2;
+    if (timeout_ms > SET_TIME_MAX_TIMEOUT_MS) {
+      timeout_ms = SET_TIME_MAX_TIMEOUT_MS;
+      break;
+    }
+  }
   const auto maybe_command = make_time_sync_command(
       this->time_sync_tm_, step_index, [this, step_index](State &) { this->handle_time_sync_step_success(step_index); },
-      SET_TIME_COMMAND_TIMEOUT_MS);
+      timeout_ms);
   if (!maybe_command.has_value()) {
     return false;
   }
 
   this->time_sync_step_index_ = step_index;
-  this->time_sync_retry_used_ = retry;
   this->parent_->enqueue_command_(maybe_command.value());
   if (!this->parent_->has_pending_command_kind_(CommandKind::kSetTimeWrite)) {
     ESP_LOGW(TAG, "Failed to enqueue set-time step S%02u", static_cast<unsigned>(step_index + 1));
@@ -209,12 +219,13 @@ void SpaNetTimeSync::handle_time_sync_step_success(uint8_t step_index) {
   if (step_index + 1 >= SET_TIME_STEP_COUNT) {
     this->time_sync_in_progress_ = false;
     this->time_sync_step_index_ = 0;
-    this->time_sync_retry_used_ = false;
+    this->time_sync_retry_count_ = 0;
     this->parent_->update();
     return;
   }
 
-  if (!this->enqueue_time_sync_step(step_index + 1, false)) {
+  this->time_sync_retry_count_ = 0;
+  if (!this->enqueue_time_sync_step(step_index + 1)) {
     this->abort_time_sync();
   }
 }
@@ -222,7 +233,7 @@ void SpaNetTimeSync::handle_time_sync_step_success(uint8_t step_index) {
 void SpaNetTimeSync::abort_time_sync() {
   this->time_sync_in_progress_ = false;
   this->time_sync_step_index_ = 0;
-  this->time_sync_retry_used_ = false;
+  this->time_sync_retry_count_ = 0;
 }
 
 void SpaNetTimeSync::maybe_run_auto_time_sync(uint32_t now_ms) {
