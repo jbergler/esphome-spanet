@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write  # create GitHub release + push gh-pages branch
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      # Cache the ESP-IDF toolchain and PlatformIO packages inside the workspace
+      # so Docker volume mounts can access them without root/permission friction.
+      - name: Cache toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            .docker-cache/platformio
+            .docker-cache/espressif
+          key: toolchain-${{ hashFiles('espa-mini-v1.yaml', 'components/spanet/**') }}
+          restore-keys: |
+            toolchain-
+
+      - name: Compile firmware
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/config" \
+            -v "${{ github.workspace }}/.docker-cache/platformio:/root/.platformio" \
+            -v "${{ github.workspace }}/.docker-cache/espressif:/root/.espressif" \
+            ghcr.io/esphome/esphome:stable \
+            compile --substitution "project_version=${{ env.VERSION }}" espa-mini-v1.yaml
+
+      # Docker runs as root; reclaim ownership before subsequent steps.
+      - name: Fix file ownership
+        run: sudo chown -R "$USER:$USER" .esphome .docker-cache
+
+      - name: Assemble dist
+        run: |
+          mkdir -p dist
+          BUILD=.esphome/build/espa-mini-v1/.pioenvs/espa-mini-v1
+          cp "$BUILD/firmware.factory.bin" dist/espa-mini-v1.factory.bin
+          cp "$BUILD/firmware.ota.bin"     dist/espa-mini-v1.ota.bin
+
+      - name: Generate manifest.json
+        run: |
+          python3 - <<'PYEOF'
+          import json, os
+          manifest = {
+              "name": "eSPA Mini v1",
+              "version": os.environ["VERSION"],
+              "home_assistant_domain": "esphome",
+              "new_install_prompt_erase": True,
+              "builds": [
+                  {
+                      "chipFamily": "ESP32-S3",
+                      "parts": [
+                          {"path": "espa-mini-v1.factory.bin", "offset": 0}
+                      ],
+                  }
+              ],
+          }
+          with open("dist/manifest.json", "w") as f:
+              json.dump(manifest, f, indent=2)
+              f.write("\n")
+          PYEOF
+
+      - name: Generate index.html
+        run: |
+          VERSION="${{ env.VERSION }}"
+          cat > dist/index.html <<HTMLEOF
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>eSPA Mini v1 Installer</title>
+            <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+            <style>
+              body {
+                font-family: sans-serif;
+                max-width: 640px;
+                margin: 3rem auto;
+                padding: 0 1.5rem;
+                color: #222;
+              }
+              h1 { margin-bottom: 0.25rem; }
+              .version { color: #666; font-size: 0.9rem; margin-bottom: 2rem; }
+              esp-web-install-button { display: block; margin: 1.5rem 0; }
+              footer { margin-top: 3rem; font-size: 0.8rem; color: #888; }
+            </style>
+          </head>
+          <body>
+            <h1>eSPA Mini v1</h1>
+            <p class="version">Version ${VERSION}</p>
+            <p>Connect your ESP32-S3 via USB, then click <strong>Install</strong>.</p>
+            <esp-web-install-button manifest="manifest.json"></esp-web-install-button>
+            <footer>
+              Requires Chrome or Edge with Web Serial support.
+              <a href="https://github.com/jbergler/esphome-spanet">Source on GitHub</a>
+            </footer>
+          </body>
+          </html>
+          HTMLEOF
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: dist
+          clean: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/espa-mini-v1.factory.bin
+            dist/espa-mini-v1.ota.bin
