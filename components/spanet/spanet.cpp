@@ -94,6 +94,7 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
   }
 
   InFlightCommand matched_command;
+  bool matched = false;
   switch (this->command_queue_->acknowledge(message, &matched_command)) {
     case AckResult::kNoInFlightCommand:
       break;
@@ -101,8 +102,10 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
       ESP_LOGV(TAG, "Message '%s' did not match expected ack for in-flight command", message.c_str());
       break;
     case AckResult::kInProgress:
+      matched = true;
       break;
     case AckResult::kCompleted:
+      matched = true;
       // Pre-emptively mutate state if on_success callback is set
       if (matched_command.command.on_success) {
         matched_command.command.on_success(this->register_store_.get_mutable_state());
@@ -117,17 +120,12 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
           callback();
         }
       }
-      // If the matched message is also a state update (e.g., RG/RE sentinel for staged RF),
-      // fall through to process it as such.
-      if (SpaNetParser::is_register_line(message)) {
-        break;
-      }
-      return;
+      break;
   }
 
   if (SpaNetParser::is_register_line(message)) {
     this->on_state_update_message_(message);
-  } else {
+  } else if (!matched) {
     ESP_LOGW(TAG, "Ignoring unknown message '%s'", message.c_str());
   }
 }
