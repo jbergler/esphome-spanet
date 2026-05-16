@@ -51,6 +51,7 @@ class SpaNetTimeSync {
   static constexpr uint32_t SET_TIME_COMMAND_TIMEOUT_MS = 1500;
   static constexpr uint32_t SET_TIME_MAX_TIMEOUT_MS = 10000;
   static constexpr uint8_t SET_TIME_MAX_RETRIES = 2;
+  static constexpr time_t TIME_SYNC_SKIP_THRESHOLD_S = 60;
   static constexpr uint8_t SET_TIME_STEP_COUNT = 6;
 
   static std::optional<uint8_t> parse_time_sync_step_index(const std::string &payload);

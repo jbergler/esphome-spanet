@@ -45,6 +45,16 @@ bool SpaNetTimeSync::request_set_current_time(time_t unix_time) {
     return false;
   }
 
+  const auto &current_spa_time = this->parent_->get_state().controller_status.current_time;
+  if (current_spa_time.has_value()) {
+    const time_t diff = unix_time - current_spa_time.value();
+    if (diff > -TIME_SYNC_SKIP_THRESHOLD_S && diff < TIME_SYNC_SKIP_THRESHOLD_S) {
+      ESP_LOGV(TAG, "Skipping time sync: spa time already within %llds",
+               static_cast<long long>(TIME_SYNC_SKIP_THRESHOLD_S));
+      return true;
+    }
+  }
+
   const auto local_time = ESPTime::from_epoch_local(unix_time);
   if (!local_time.is_valid()) {
     ESP_LOGW(TAG, "Failed to convert unix time for set-time request");
