@@ -101,7 +101,9 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
       ESP_LOGV(TAG, "Message '%s' did not match expected ack for in-flight command", message.c_str());
       break;
     case AckResult::kInProgress:
-      return;
+      // Intermediate RF poll lines must still update the register store (e.g. R3
+      // sets major_version; it only ever arrives inside an RF poll response).
+      break;
     case AckResult::kMatched:
       // Pre-emptively mutate state if on_success callback is set
       if (matched_command.command.on_success) {

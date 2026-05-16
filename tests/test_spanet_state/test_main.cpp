@@ -367,6 +367,72 @@ TEST(ControllerStatusIntegrationTest, CurrentTimeEmptyWhenOnlyR3Received) {
   EXPECT_FALSE(state.controller_status.current_time.has_value());
 }
 
+TEST(RegisterStoreTest, ExtractsMajorVersionV2) {
+  RegisterStore store;
+  put_line(store, ",R3,10,1,4,4,4,SW V2 24 09 13,SVM1,SN1,SN2,:");
+  const auto &state = store.get_state();
+  EXPECT_EQ(state.controller_status.major_version, 2);
+  EXPECT_EQ(state.controller_status.software_version, "V2.24.09.13");
+}
+
+TEST(RegisterStoreTest, ExtractsMajorVersionV3) {
+  RegisterStore store;
+  put_line(store, ",R3,10,1,4,4,4,SW V3 28 07 14,SVM1,SN1,SN2,:");
+  const auto &state = store.get_state();
+  EXPECT_EQ(state.controller_status.major_version, 3);
+  EXPECT_EQ(state.controller_status.software_version, "V3.28.07.14");
+}
+
+TEST(RegisterStoreTest, ExtractsMajorVersionV6) {
+  RegisterStore store;
+  put_line(store, ",R3,10,1,4,4,4,SW V6 21 12 "
+                  "13,SVM1,21460001,20000999,0,1,0,0,0,0,NA,1,0,414,Auto,650,0,"
+                  "7,7,0,0,0,:");
+  const auto &state = store.get_state();
+  EXPECT_EQ(state.controller_status.major_version, 6);
+  EXPECT_EQ(state.controller_status.software_version, "V6.21.12.13");
+}
+
+TEST(RegisterStoreTest, MajorVersionIsZeroWhenR3NotReceived) {
+  RegisterStore store;
+  const auto &state = store.get_state();
+  EXPECT_EQ(state.controller_status.major_version, 0);
+}
+
+TEST(RegisterStoreTest, MajorVersionUpdatesOnR3Overwrite) {
+  RegisterStore store;
+  put_line(store, ",R3,10,1,4,4,4,SW V2 24 09 13,SVM1,SN1,SN2,:");
+  EXPECT_EQ(store.get_state().controller_status.major_version, 2);
+  put_line(store, ",R3,10,1,4,4,4,SW V6 21 12 13,SVM1,SN1,SN2,:");
+  EXPECT_EQ(store.get_state().controller_status.major_version, 6);
+}
+
+TEST(RegisterStoreTest, RfCompletionPredicateRoutesV2ToRe) {
+  RegisterStore store;
+  put_line(store, ",R3,10,1,4,4,4,SW V2 24 09 13,SVM1,SN1,SN2,:");
+  auto predicate = make_rf_completion_predicate(store);
+  EXPECT_TRUE(predicate(",RE,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,:"));
+  EXPECT_FALSE(predicate(",RG,1,1,1,1,1,1,0-,1-2-0324,1-1-01,0-,0-,0,0,0,1808,:"));
+}
+
+TEST(RegisterStoreTest, RfCompletionPredicateRoutesV3ToRg) {
+  RegisterStore store;
+  put_line(store, ",R3,10,1,4,4,4,SW V3 28 07 14,SVM1,SN1,SN2,:");
+  auto predicate = make_rf_completion_predicate(store);
+  EXPECT_TRUE(predicate(",RG,1,1,1,1,1,1,0-,1-2-0324,1-1-01,0-,0-,0,0,0,1808,:"));
+  EXPECT_FALSE(predicate(",RE,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,:"));
+}
+
+TEST(RegisterStoreTest, RfCompletionPredicateRoutesV6ToRg) {
+  RegisterStore store;
+  put_line(store, ",R3,10,1,4,4,4,SW V6 21 12 "
+                  "13,SVM1,21460001,20000999,0,1,0,0,0,0,NA,1,0,414,Auto,650,0,"
+                  "7,7,0,0,0,:");
+  auto predicate = make_rf_completion_predicate(store);
+  EXPECT_TRUE(predicate(",RG,1,1,1,1,1,1,0-,1-2-0324,1-1-01,0-,0-,0,0,0,1808,:"));
+  EXPECT_FALSE(predicate(",RE,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,:"));
+}
+
 }  // namespace esphome::spanet::tests
 
 int main(int argc, char **argv) {
