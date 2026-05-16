@@ -7,6 +7,13 @@
 #include <string>
 #include <variant>
 
+#if __has_include("esphome/core/time.h")
+#include "esphome/core/time.h"
+#define SPANET_HAS_ESP_TIME 1
+#else
+#define SPANET_HAS_ESP_TIME 0
+#endif
+
 namespace esphome::spanet {
 
 static std::string normalize_software_version(const std::string &version) {
@@ -197,6 +204,17 @@ void RegisterStore::update_controller_status() {
 
   if (this->registers_.r2.has_value()) {
     const auto &r2 = this->registers_.r2.value();
+#if SPANET_HAS_ESP_TIME
+    ESPTime local_time{};
+    local_time.year = static_cast<uint16_t>(std::stoi(r2.spa_time_year));
+    local_time.month = static_cast<uint8_t>(std::stoi(r2.spa_time_month));
+    local_time.day_of_month = static_cast<uint8_t>(std::stoi(r2.spa_time_day));
+    local_time.hour = static_cast<uint8_t>(std::stoi(r2.spa_time_hour));
+    local_time.minute = static_cast<uint8_t>(std::stoi(r2.spa_time_minute));
+    local_time.second = static_cast<uint8_t>(std::stoi(r2.spa_time_second));
+    local_time.recalc_timestamp_local();
+    this->state.controller_status.current_time = local_time.timestamp;
+#else
     std::tm tm = {};
     tm.tm_year = std::stoi(r2.spa_time_year) - 1900;
     tm.tm_mon = std::stoi(r2.spa_time_month) - 1;
@@ -206,6 +224,7 @@ void RegisterStore::update_controller_status() {
     tm.tm_sec = std::stoi(r2.spa_time_second);
     tm.tm_isdst = -1;
     this->state.controller_status.current_time = std::mktime(&tm);
+#endif
 
     this->state.temperatures.heater_c = parse_tenths_celsius(r2.heater_temperature);
     this->state.temperatures.case_c = parse_tenths_celsius(r2.case_temperature);

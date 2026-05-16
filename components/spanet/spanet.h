@@ -10,6 +10,7 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/uart/uart.h"
+#include "esphome/core/automation.h"
 #include "esphome/core/component.h"
 
 #include "command_queue.h"
@@ -17,6 +18,12 @@
 #include "spanet_state.h"
 #include "uart_rx_buffer.h"
 #include "update_debounce.h"
+
+namespace esphome {
+namespace time {
+class RealTimeClock;
+}
+}  // namespace esphome
 
 namespace esphome::spanet {
 
@@ -27,6 +34,7 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   void set_controller_model_sensor(text_sensor::TextSensor *sensor) { this->sen_controller_model_ = sensor; }
   void set_controller_serial_sensor(text_sensor::TextSensor *sensor) { this->sen_controller_serial_ = sensor; }
   void set_controller_fw_version_sensor(text_sensor::TextSensor *sensor) { this->sen_controller_fw_version_ = sensor; }
+  void set_current_time_sensor(text_sensor::TextSensor *sensor) { this->sen_current_time_ = sensor; }
   void set_water_temperature_sensor(sensor::Sensor *sensor) { this->sen_water_temperature_ = sensor; }
   void set_setpoint_temperature_sensor(sensor::Sensor *sensor) { this->sen_setpoint_temperature_ = sensor; }
   void set_heater_temperature_sensor(sensor::Sensor *sensor) { this->sen_heater_temperature_ = sensor; }
@@ -35,11 +43,16 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   void set_mains_current_sensor(sensor::Sensor *sensor) { this->sen_mains_current_ = sensor; }
   void set_instant_power_sensor(sensor::Sensor *sensor) { this->sen_instant_power_ = sensor; }
   void set_total_energy_sensor(sensor::Sensor *sensor) { this->sen_total_energy_ = sensor; }
+  void set_time_source(esphome::time::RealTimeClock *time_source) { this->time_source_ = time_source; }
+  void set_auto_sync_time(bool auto_sync_time) { this->auto_sync_time_ = auto_sync_time; }
+  void set_auto_sync_interval_ms(uint32_t interval_ms) { this->auto_sync_interval_ms_ = interval_ms; }
   void add_on_state_callback(StateUpdateCallback callback) { this->state_callbacks_.push_back(std::move(callback)); }
   void add_on_rf_poll_complete_callback(std::function<void()> callback) {
     this->rf_poll_complete_callbacks_.push_back(std::move(callback));
   }
   const State &get_state() const { return this->register_store_.get_state(); }
+  bool request_set_current_time(time_t unix_time);
+  bool request_set_current_time_now();
   void enqueue_command_(Command command);
   bool has_pending_command_kind_(CommandKind kind) const;
 
@@ -75,6 +88,7 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   text_sensor::TextSensor *sen_controller_model_{nullptr};
   text_sensor::TextSensor *sen_controller_serial_{nullptr};
   text_sensor::TextSensor *sen_controller_fw_version_{nullptr};
+  text_sensor::TextSensor *sen_current_time_{nullptr};
   sensor::Sensor *sen_water_temperature_{nullptr};
   sensor::Sensor *sen_setpoint_temperature_{nullptr};
   sensor::Sensor *sen_heater_temperature_{nullptr};
@@ -89,6 +103,44 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   std::vector<StateUpdateCallback> state_callbacks_;
   std::vector<std::function<void()>> rf_poll_complete_callbacks_;
   std::unique_ptr<CommandQueue> command_queue_;
+
+  esphome::time::RealTimeClock *time_source_{nullptr};
+  bool auto_sync_time_{false};
+  uint32_t auto_sync_interval_ms_{3600000};
+  uint32_t next_auto_sync_ms_{0};
+
+  bool time_sync_in_progress_{false};
+  uint8_t time_sync_step_index_{0};
+  bool time_sync_retry_used_{false};
+  std::tm time_sync_tm_{};
+
+  static std::string format_time_text_(time_t unix_time);
+  static std::optional<uint8_t> parse_time_sync_step_index_(const std::string &payload);
+  static std::optional<Command> make_time_sync_command_(const std::tm &tm_value, uint8_t step_index,
+                                                        std::function<void(class State &)> on_success,
+                                                        uint32_t timeout_ms);
+  void maybe_run_auto_time_sync_(uint32_t now_ms);
+  bool enqueue_time_sync_step_(uint8_t step_index, bool retry);
+  void handle_time_sync_step_success_(uint8_t step_index);
+  void abort_time_sync_();
+};
+
+template<typename... Ts> class SpaNetSetCurrentTimeAction : public Action<Ts...> {
+ public:
+  explicit SpaNetSetCurrentTimeAction(SpaNetComponent *parent) : parent_(parent) {}
+
+  TEMPLATABLE_VALUE(uint32_t, unix_timestamp)
+
+  void play(Ts... x) override {
+    if (this->unix_timestamp_.has_value()) {
+      this->parent_->request_set_current_time(static_cast<time_t>(this->unix_timestamp_.value(x...)));
+      return;
+    }
+    this->parent_->request_set_current_time_now();
+  }
+
+ protected:
+  SpaNetComponent *parent_;
 };
 
 }  // namespace esphome::spanet

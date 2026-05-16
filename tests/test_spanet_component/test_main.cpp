@@ -131,6 +131,82 @@ TEST(CommandQueueTest, LightColorAckAdvancesQueue) {
   EXPECT_EQ(writes[1], "RF\n");
 }
 
+TEST(CommandQueueTest, SetTimeSequenceAdvancesOnAck) {
+  std::vector<std::string> writes;
+  uint32_t now_ms = 100;
+
+  CommandQueue manager([&](const std::string &payload) { writes.push_back(payload); }, [&]() { return now_ms; }, 8);
+
+  manager.enqueue(Command{
+      .kind = CommandKind::kSetTimeWrite,
+      .payload = "S01:2026",
+      .expected_ack = "S01",
+      .timeout_ms = 1500,
+  });
+  manager.enqueue(Command{
+      .kind = CommandKind::kSetTimeWrite,
+      .payload = "S02:5",
+      .expected_ack = "S02",
+      .timeout_ms = 1500,
+  });
+  manager.enqueue(Command{
+      .kind = CommandKind::kSetTimeWrite,
+      .payload = "S03:16",
+      .expected_ack = "S03",
+      .timeout_ms = 1500,
+  });
+
+  ASSERT_EQ(writes.size(), 1u);
+  EXPECT_EQ(writes[0], "S01:2026\n");
+
+  InFlightCommand matched;
+  EXPECT_EQ(manager.acknowledge("2026", &matched), AckResult::kUnmatchedAck);
+  EXPECT_EQ(manager.acknowledge("S01", &matched), AckResult::kMatched);
+  EXPECT_EQ(matched.command.kind, CommandKind::kSetTimeWrite);
+  manager.maybe_send_next_();
+
+  ASSERT_EQ(writes.size(), 2u);
+  EXPECT_EQ(writes[1], "S02:5\n");
+
+  EXPECT_EQ(manager.acknowledge("5", &matched), AckResult::kUnmatchedAck);
+  EXPECT_EQ(manager.acknowledge("S02", &matched), AckResult::kMatched);
+  manager.maybe_send_next_();
+
+  ASSERT_EQ(writes.size(), 3u);
+  EXPECT_EQ(writes[2], "S03:16\n");
+}
+
+TEST(CommandQueueTest, SetTimeTimeoutAdvancesToRetryCandidate) {
+  std::vector<std::string> writes;
+  uint32_t now_ms = 100;
+
+  CommandQueue manager([&](const std::string &payload) { writes.push_back(payload); }, [&]() { return now_ms; }, 8);
+
+  manager.enqueue(Command{
+      .kind = CommandKind::kSetTimeWrite,
+      .payload = "S04:23",
+      .expected_ack = "S04",
+      .timeout_ms = 500,
+  });
+  manager.enqueue(Command{
+      .kind = CommandKind::kSetTimeWrite,
+      .payload = "S04:23",
+      .expected_ack = "S04",
+      .timeout_ms = 500,
+  });
+
+  ASSERT_EQ(writes.size(), 1u);
+  EXPECT_EQ(writes[0], "S04:23\n");
+
+  now_ms = 600;
+  InFlightCommand timed_out;
+  EXPECT_TRUE(manager.expire_timed_out(now_ms, &timed_out, nullptr));
+  EXPECT_EQ(timed_out.command.kind, CommandKind::kSetTimeWrite);
+
+  ASSERT_EQ(writes.size(), 2u);
+  EXPECT_EQ(writes[1], "S04:23\n");
+}
+
 TEST(CommandQueueTest, TimeoutDoesNotFireBeforeBoundary) {
   std::vector<std::string> writes;
   uint32_t now_ms = 100;

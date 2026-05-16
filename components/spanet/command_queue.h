@@ -23,6 +23,7 @@ enum class CommandKind {
   kRfPoll,
   kSetpointWrite,
   kPumpWrite,
+  kSetTimeWrite,
   kLightToggle,
   kLightBrightness,
   kLightColor,
@@ -151,6 +152,10 @@ inline bool CommandQueue::expire_timed_out(uint32_t now_ms, InFlightCommand *tim
   }
 
   if (this->in_flight_command_->command.timeout_ms == 0) {
+    return false;
+  }
+
+  if (now_ms < this->in_flight_command_->sent_at_ms) {
     return false;
   }
 

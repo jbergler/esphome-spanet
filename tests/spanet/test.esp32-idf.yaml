@@ -33,6 +33,8 @@ text_sensor:
       name: "SpaNET Controller Serial"
     controller_fw_version:
       name: "SpaNET Controller FW Version"
+    current_time:
+      name: "SpaNET Current Time"
 
 sensor:
   - platform: spanet

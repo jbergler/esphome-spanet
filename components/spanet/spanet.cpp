@@ -1,6 +1,16 @@
 #include "spanet.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
+#include "esphome/core/time.h"
+
+#include <cstdio>
+
+#if __has_include("esphome/components/time/real_time_clock.h")
+#include "esphome/components/time/real_time_clock.h"
+#define SPANET_HAS_REALTIME_CLOCK 1
+#else
+#define SPANET_HAS_REALTIME_CLOCK 0
+#endif
 
 namespace esphome::spanet {
 
@@ -11,6 +21,8 @@ static constexpr uint32_t STATE_UPDATE_DEBOUNCE_MS = 250;
 static constexpr size_t MAX_QUEUED_COMMANDS = 4;
 static constexpr uint32_t RF_POLL_TIMEOUT_MS = 5000;
 static constexpr uint32_t INITIAL_POLL_DELAY_MS = 10000;
+static constexpr uint32_t SET_TIME_COMMAND_TIMEOUT_MS = 1500;
+static constexpr uint8_t SET_TIME_STEP_COUNT = 6;
 
 void SpaNetComponent::setup() {
   ESP_LOGI(TAG, "Configuring SpaNET component");
@@ -29,6 +41,10 @@ void SpaNetComponent::setup() {
     this->publish_text_sensor_if_changed_(this->sen_controller_model_, controller.model);
     this->publish_text_sensor_if_changed_(this->sen_controller_fw_version_, controller.software_version);
     this->publish_text_sensor_if_changed_(this->sen_controller_serial_, controller.serial_number);
+    if (controller.current_time.has_value()) {
+      this->publish_text_sensor_if_changed_(this->sen_current_time_,
+                                            format_time_text_(controller.current_time.value()));
+    }
 
     // Temperatures
     this->publish_float_sensor_if_changed_(this->sen_water_temperature_, temperatures.water_c);
@@ -61,10 +77,13 @@ void SpaNetComponent::loop() {
     }
   }
 
-  this->process_command_timeouts_(millis());
+  const uint32_t now_ms = millis();
+  this->process_command_timeouts_(now_ms);
   if (this->command_queue_ != nullptr) {
     this->command_queue_->maybe_send_next_();
   }
+
+  this->maybe_run_auto_time_sync_(now_ms);
 }
 
 void SpaNetComponent::on_uart_message_(const std::string &message) {
@@ -168,6 +187,9 @@ void SpaNetComponent::dump_config() {
   if (this->sen_controller_fw_version_ != nullptr) {
     ESP_LOGCONFIG(TAG, "  Firmware Version: %s", this->sen_controller_fw_version_->get_name().c_str());
   }
+  if (this->sen_current_time_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Current Time: %s", this->sen_current_time_->get_name().c_str());
+  }
   if (this->sen_water_temperature_ != nullptr) {
     ESP_LOGCONFIG(TAG, "  Water Temperature: %s", this->sen_water_temperature_->get_name().c_str());
   }
@@ -191,6 +213,10 @@ void SpaNetComponent::dump_config() {
   }
   if (this->sen_total_energy_ != nullptr) {
     ESP_LOGCONFIG(TAG, "  Total Energy: %s", this->sen_total_energy_->get_name().c_str());
+  }
+  if (this->time_source_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Auto Sync Time: %s", YESNO(this->auto_sync_time_));
+    ESP_LOGCONFIG(TAG, "  Auto Sync Interval (ms): %u", static_cast<unsigned>(this->auto_sync_interval_ms_));
   }
 }
 
@@ -233,11 +259,219 @@ void SpaNetComponent::process_command_timeouts_(uint32_t now_ms) {
   }
 
   ESP_LOGW(TAG, "Command timed out after %u ms: payload=%s", age_ms, timed_out_command.command.payload.c_str());
+
+  if (timed_out_command.command.kind != CommandKind::kSetTimeWrite || !this->time_sync_in_progress_) {
+    return;
+  }
+
+  const auto maybe_step_index = parse_time_sync_step_index_(timed_out_command.command.payload);
+  if (!maybe_step_index.has_value() || maybe_step_index.value() != this->time_sync_step_index_) {
+    this->abort_time_sync_();
+    return;
+  }
+
+  if (this->time_sync_retry_used_) {
+    ESP_LOGW(TAG, "Aborting set-time sequence after retry exhausted at step S%02u",
+             static_cast<unsigned>(this->time_sync_step_index_ + 1));
+    this->abort_time_sync_();
+    return;
+  }
+
+  ESP_LOGW(TAG, "Retrying set-time step S%02u after timeout", static_cast<unsigned>(this->time_sync_step_index_ + 1));
+  this->enqueue_time_sync_step_(this->time_sync_step_index_, true);
 }
 
 void SpaNetComponent::send_uart_command_(const std::string &command) {
   ESP_LOGI(TAG, "UART TX: %s", command.c_str());
   this->write_str(command.c_str());
+}
+
+bool SpaNetComponent::request_set_current_time(time_t unix_time) {
+  if (unix_time <= 0) {
+    ESP_LOGW(TAG, "Ignoring invalid unix time %ld", static_cast<long>(unix_time));
+    return false;
+  }
+
+  if (this->time_sync_in_progress_ || this->has_pending_command_kind_(CommandKind::kSetTimeWrite)) {
+    ESP_LOGV(TAG, "Ignoring set-time request while one is already in progress");
+    return false;
+  }
+
+  const auto local_time = ESPTime::from_epoch_local(unix_time);
+  if (!local_time.is_valid()) {
+    ESP_LOGW(TAG, "Failed to convert unix time for set-time request");
+    return false;
+  }
+
+  this->time_sync_tm_.tm_year = static_cast<int>(local_time.year) - 1900;
+  this->time_sync_tm_.tm_mon = static_cast<int>(local_time.month) - 1;
+  this->time_sync_tm_.tm_mday = static_cast<int>(local_time.day_of_month);
+  this->time_sync_tm_.tm_hour = static_cast<int>(local_time.hour);
+  this->time_sync_tm_.tm_min = static_cast<int>(local_time.minute);
+  this->time_sync_tm_.tm_sec = static_cast<int>(local_time.second);
+  this->time_sync_tm_.tm_wday = static_cast<int>(local_time.day_of_week % 7);
+  this->time_sync_tm_.tm_yday = static_cast<int>(local_time.day_of_year) - 1;
+  this->time_sync_in_progress_ = true;
+  this->time_sync_step_index_ = 0;
+  this->time_sync_retry_used_ = false;
+
+  if (!this->enqueue_time_sync_step_(0, false)) {
+    this->abort_time_sync_();
+    return false;
+  }
+
+  return true;
+}
+
+bool SpaNetComponent::request_set_current_time_now() {
+  if (this->time_source_ == nullptr) {
+    ESP_LOGW(TAG, "Cannot set current time without configured time source");
+    return false;
+  }
+
+#if SPANET_HAS_REALTIME_CLOCK
+  auto now = this->time_source_->now();
+  if (!now.is_valid()) {
+    ESP_LOGW(TAG, "Time source is not valid yet; skipping set-time request");
+    return false;
+  }
+
+  return this->request_set_current_time(static_cast<time_t>(now.timestamp));
+#else
+  ESP_LOGW(TAG, "Set-time-now unavailable: RealTimeClock header not present in this build context");
+  return false;
+#endif
+}
+
+std::string SpaNetComponent::format_time_text_(time_t unix_time) {
+  auto local_time = ESPTime::from_epoch_local(unix_time);
+  if (!local_time.is_valid()) {
+    return "";
+  }
+
+  return local_time.strftime("%Y-%m-%d %H:%M");
+}
+
+std::optional<uint8_t> SpaNetComponent::parse_time_sync_step_index_(const std::string &payload) {
+  if (payload.size() < 3 || payload[0] != 'S' || payload[1] < '0' || payload[1] > '9' || payload[2] < '0' ||
+      payload[2] > '9') {
+    return std::nullopt;
+  }
+
+  const int command_number = (payload[1] - '0') * 10 + (payload[2] - '0');
+  if (command_number < 1 || command_number > SET_TIME_STEP_COUNT) {
+    return std::nullopt;
+  }
+
+  return static_cast<uint8_t>(command_number - 1);
+}
+
+std::optional<Command> SpaNetComponent::make_time_sync_command_(const std::tm &tm_value, uint8_t step_index,
+                                                                std::function<void(State &)> on_success,
+                                                                uint32_t timeout_ms) {
+  if (step_index >= SET_TIME_STEP_COUNT) {
+    return std::nullopt;
+  }
+
+  int value = 0;
+  switch (step_index) {
+    case 0:
+      value = tm_value.tm_year + 1900;
+      break;
+    case 1:
+      value = tm_value.tm_mon + 1;
+      break;
+    case 2:
+      value = tm_value.tm_mday;
+      break;
+    case 3:
+      value = tm_value.tm_hour;
+      break;
+    case 4:
+      value = tm_value.tm_min;
+      break;
+    case 5:
+      value = (tm_value.tm_wday + 6) % 7;
+      break;
+    default:
+      return std::nullopt;
+  }
+
+  char command_prefix[4];
+  std::snprintf(command_prefix, sizeof(command_prefix), "S%02u", static_cast<unsigned>(step_index + 1));
+  const std::string value_str = std::to_string(value);
+  return Command{
+      .kind = CommandKind::kSetTimeWrite,
+      .payload = std::string(command_prefix) + ":" + value_str,
+      .expected_ack = command_prefix,
+      .timeout_ms = timeout_ms,
+      .triggers_rf_poll = false,
+      .on_success = std::move(on_success),
+  };
+}
+
+void SpaNetComponent::maybe_run_auto_time_sync_(uint32_t now_ms) {
+  if (!this->auto_sync_time_ || this->time_source_ == nullptr || this->auto_sync_interval_ms_ == 0) {
+    return;
+  }
+
+  if (now_ms < this->next_auto_sync_ms_) {
+    return;
+  }
+
+  if (this->time_sync_in_progress_ || this->has_pending_command_kind_(CommandKind::kSetTimeWrite)) {
+    this->next_auto_sync_ms_ = now_ms + 1000;
+    return;
+  }
+
+  if (this->request_set_current_time_now()) {
+    this->next_auto_sync_ms_ = now_ms + this->auto_sync_interval_ms_;
+  } else {
+    this->next_auto_sync_ms_ = now_ms + 5000;
+  }
+}
+
+bool SpaNetComponent::enqueue_time_sync_step_(uint8_t step_index, bool retry) {
+  const auto maybe_command = make_time_sync_command_(
+      this->time_sync_tm_, step_index,
+      [this, step_index](State &) { this->handle_time_sync_step_success_(step_index); }, SET_TIME_COMMAND_TIMEOUT_MS);
+  if (!maybe_command.has_value()) {
+    return false;
+  }
+
+  this->time_sync_step_index_ = step_index;
+  this->time_sync_retry_used_ = retry;
+  this->enqueue_command_(maybe_command.value());
+  if (!this->has_pending_command_kind_(CommandKind::kSetTimeWrite)) {
+    ESP_LOGW(TAG, "Failed to enqueue set-time step S%02u", static_cast<unsigned>(step_index + 1));
+    return false;
+  }
+
+  return true;
+}
+
+void SpaNetComponent::handle_time_sync_step_success_(uint8_t step_index) {
+  if (!this->time_sync_in_progress_ || this->time_sync_step_index_ != step_index) {
+    return;
+  }
+
+  if (step_index + 1 >= SET_TIME_STEP_COUNT) {
+    this->time_sync_in_progress_ = false;
+    this->time_sync_step_index_ = 0;
+    this->time_sync_retry_used_ = false;
+    this->update();
+    return;
+  }
+
+  if (!this->enqueue_time_sync_step_(step_index + 1, false)) {
+    this->abort_time_sync_();
+  }
+}
+
+void SpaNetComponent::abort_time_sync_() {
+  this->time_sync_in_progress_ = false;
+  this->time_sync_step_index_ = 0;
+  this->time_sync_retry_used_ = false;
 }
 
 }  // namespace esphome::spanet

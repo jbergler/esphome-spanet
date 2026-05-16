@@ -27,6 +27,11 @@ logger:
   level: DEBUG
 
 api:
+  actions:
+    - action: set_current_time
+      then:
+        - lambda: |-
+            id(spa_hub).request_set_current_time_now();
 
 ota:
   - platform: esphome
@@ -61,6 +66,15 @@ uart:
   rx_pin: ${spa_uart_rx_pin}
   baud_rate: ${spa_uart_baud}
 
+time:
+  - platform: homeassistant
+    id: ha_time
+    on_time_sync:
+      then:
+        - delay: 5s
+        - spanet.set_current_time:
+            spanet_id: spa_hub
+
 external_components:
   - source:
       type: local
@@ -70,6 +84,7 @@ spanet:
   id: spa_hub
   uart_id: spa_uart
   update_interval: 60s
+  time_id: ha_time
 
 climate:
   - platform: spanet
@@ -85,6 +100,8 @@ text_sensor:
       name: "Controller Serial"
     controller_fw_version:
       name: "Controller FW Version"
+    current_time:
+      name: "Current Time"
 
 sensor:
   - platform: spanet
