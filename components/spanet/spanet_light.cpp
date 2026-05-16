@@ -27,10 +27,11 @@ light::LightTraits SpaNetLight::get_traits() {
 
 void SpaNetLight::write_state(light::LightState *state) {
   if (this->applying_remote_update_) {
+    ESP_LOGD(TAG, "Currently applying remote update, ignoring state write to avoid feedback loop");
     return;
   }
 
-  const auto &values = state->remote_values;
+  const auto &values = state->current_values;
   const bool desired_on = values.is_on();
   float desired_brightness_f = values.get_brightness();
   if (desired_brightness_f < 0.0f) {
@@ -38,7 +39,8 @@ void SpaNetLight::write_state(light::LightState *state) {
   } else if (desired_brightness_f > 1.0f) {
     desired_brightness_f = 1.0f;
   }
-  const uint8_t desired_brightness = static_cast<uint8_t>(std::lround(desired_brightness_f * 255.0f));
+  const uint8_t desired_brightness =
+      static_cast<uint8_t>(std::lround((std::round(desired_brightness_f * 5.0f) / 5.0f) * 255.0f));
 
   uint16_t desired_hue = this->polled_hue_;
   bool has_desired_hue = false;
@@ -191,7 +193,7 @@ bool SpaNetLight::request_light_toggle_(bool desired_state) {
       .payload = "W14",
       .expected_acks = {"W14"},
       .timeout_ms = COMMAND_TIMEOUT_MS,
-      .triggers_rf_poll = true,
+      .on_success = [desired_state](State &state) { state.light.is_on = desired_state; },
   });
   return true;
 }
@@ -202,9 +204,9 @@ bool SpaNetLight::request_light_brightness_(uint8_t esphome_brightness) {
   this->parent_->enqueue_command_(Command{
       .kind = CommandKind::kLightBrightness,
       .payload = "S08:" + device_brightness_str,
-      .expected_acks = {device_brightness_str},
+      .expected_acks = {device_brightness_str, "S08"},
       .timeout_ms = COMMAND_TIMEOUT_MS,
-      .triggers_rf_poll = true,
+      .on_success = [device_brightness](State &state) { state.light.brightness = device_brightness; },
   });
   return true;
 }
@@ -215,9 +217,9 @@ bool SpaNetLight::request_light_color_(uint16_t hue_degrees) {
   this->parent_->enqueue_command_(Command{
       .kind = CommandKind::kLightColor,
       .payload = "S10:" + color_index_str,
-      .expected_acks = {color_index_str},
+      .expected_acks = {color_index_str, "S10"},
       .timeout_ms = COMMAND_TIMEOUT_MS,
-      .triggers_rf_poll = true,
+      .on_success = [color_index](State &state) { state.light.color_index = color_index; },
   });
   return true;
 }

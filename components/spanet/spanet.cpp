@@ -95,7 +95,13 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
 
   InFlightCommand matched_command;
   bool matched = false;
-  switch (this->command_queue_->acknowledge(message, &matched_command)) {
+  auto on_success = [this](InFlightCommand &matched_command) {
+    if (matched_command.command.on_success) {
+      matched_command.command.on_success(this->register_store_.get_mutable_state());
+      this->notify_state_update_(this->register_store_.get_state());
+    }
+  };
+  switch (this->command_queue_->acknowledge(message, &matched_command, on_success)) {
     case AckResult::kNoInFlightCommand:
       break;
     case AckResult::kUnmatchedAck:
@@ -106,19 +112,8 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
       break;
     case AckResult::kCompleted:
       matched = true;
-      // Pre-emptively mutate state if on_success callback is set
-      if (matched_command.command.on_success) {
-        matched_command.command.on_success(this->register_store_.get_mutable_state());
-        this->notify_state_update_(this->register_store_.get_state());
-      }
       if (matched_command.command.triggers_rf_poll) {
         this->update();
-      }
-      // RF poll completion triggers callbacks immediately (no need for debounce flag)
-      if (matched_command.command.kind == CommandKind::kRfPoll) {
-        for (auto &callback : this->rf_poll_complete_callbacks_) {
-          callback();
-        }
       }
       break;
   }
@@ -397,6 +392,7 @@ std::optional<Command> SpaNetComponent::make_time_sync_command_(const std::tm &t
       .timeout_ms = timeout_ms,
       .triggers_rf_poll = false,
       .on_success = std::move(on_success),
+      .allow_duplicates = true,
   };
 }
 

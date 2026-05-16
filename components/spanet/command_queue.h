@@ -42,6 +42,7 @@ struct Command {
   bool triggers_rf_poll = false;
   // Optional callback to mutate state on successful ack
   std::function<void(class State &)> on_success;
+  bool allow_duplicates = false;
 };
 
 struct InFlightCommand {
@@ -72,7 +73,8 @@ class CommandQueue {
   CommandQueue(SendFn send_fn, NowMsFn now_ms_fn, size_t max_queued_commands);
 
   EnqueueResult enqueue(Command command);
-  AckResult acknowledge(const std::string &message, InFlightCommand *matched_command);
+  AckResult acknowledge(const std::string &message, InFlightCommand *matched_command,
+                        std::function<void(InFlightCommand &)> on_success);
   bool expire_timed_out(uint32_t now_ms, InFlightCommand *timed_out_command, uint32_t *age_ms);
 
   bool has_pending_kind(CommandKind kind) const;
@@ -99,7 +101,7 @@ inline CommandQueue::CommandQueue(SendFn send_fn, NowMsFn now_ms_fn, size_t max_
 inline EnqueueResult CommandQueue::enqueue(Command command) {
   ESP_LOGD(TAG, "enqueue called: kind=%d payload='%s', expected_acks=%zu", static_cast<int>(command.kind),
            command.payload.c_str(), command.expected_acks.size());
-  if (command.kind == CommandKind::kRfPoll && this->has_pending_kind(CommandKind::kRfPoll)) {
+  if (!command.allow_duplicates && this->has_pending_kind(command.kind)) {
     return EnqueueResult::kDroppedDuplicateRfPoll;
   }
 
@@ -114,7 +116,8 @@ inline EnqueueResult CommandQueue::enqueue(Command command) {
   return EnqueueResult::kEnqueued;
 }
 
-inline AckResult CommandQueue::acknowledge(const std::string &message, InFlightCommand *matched_command) {
+inline AckResult CommandQueue::acknowledge(const std::string &message, InFlightCommand *matched_command,
+                                           std::function<void(InFlightCommand &)> on_success) {
   if (!this->in_flight_command_.has_value()) {
     return AckResult::kNoInFlightCommand;
   }
@@ -146,6 +149,9 @@ inline AckResult CommandQueue::acknowledge(const std::string &message, InFlightC
     if (completion_predicate_satisfied) {
       if (matched_command != nullptr)
         *matched_command = in_flight;
+      if (on_success) {
+        on_success(in_flight);
+      }
       this->in_flight_command_.reset();
       return AckResult::kCompleted;
     } else {
