@@ -16,14 +16,9 @@
 #include "command_queue.h"
 #include "spanet_parser.h"
 #include "spanet_state.h"
+#include "spanet_time_sync.h"
 #include "uart_rx_buffer.h"
 #include "update_debounce.h"
-
-namespace esphome {
-namespace time {
-class RealTimeClock;
-}
-}  // namespace esphome
 
 namespace esphome::spanet {
 
@@ -65,14 +60,12 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   void process_command_timeouts_(uint32_t now_ms);
   virtual void send_uart_command_(const std::string &command);
 
-  // Publish text sensor if value changed
   template<typename T> void publish_text_sensor_if_changed_(text_sensor::TextSensor *sensor, const T &value) {
     if (sensor != nullptr && !value.empty() && sensor->get_raw_state() != value) {
       sensor->publish_state(value);
     }
   }
 
-  // Publish float sensor if optional has value and differs from current state (or state is NaN)
   template<typename T> void publish_float_sensor_if_changed_(sensor::Sensor *sensor, const T &optional_value) {
     if (sensor != nullptr && optional_value.has_value()) {
       const float next_value = optional_value.value();
@@ -99,26 +92,12 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   UpdateDebounceGate state_update_debounce_{250};
   std::vector<StateUpdateCallback> state_callbacks_;
   std::unique_ptr<CommandQueue> command_queue_;
+  std::unique_ptr<SpaNetTimeSync> time_sync_;
 
+  // Staging values for time sync configuration (set before setup() is called).
   esphome::time::RealTimeClock *time_source_{nullptr};
   bool auto_sync_time_{false};
   uint32_t auto_sync_interval_ms_{3600000};
-  uint32_t next_auto_sync_ms_{0};
-
-  bool time_sync_in_progress_{false};
-  uint8_t time_sync_step_index_{0};
-  bool time_sync_retry_used_{false};
-  std::tm time_sync_tm_{};
-
-  static std::string format_time_text_(time_t unix_time);
-  static std::optional<uint8_t> parse_time_sync_step_index_(const std::string &payload);
-  static std::optional<Command> make_time_sync_command_(const std::tm &tm_value, uint8_t step_index,
-                                                        std::function<void(class State &)> on_success,
-                                                        uint32_t timeout_ms);
-  void maybe_run_auto_time_sync_(uint32_t now_ms);
-  bool enqueue_time_sync_step_(uint8_t step_index, bool retry);
-  void handle_time_sync_step_success_(uint8_t step_index);
-  void abort_time_sync_();
 };
 
 template<typename... Ts> class SpaNetSetCurrentTimeAction : public Action<Ts...> {
