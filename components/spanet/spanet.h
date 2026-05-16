@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 
-#include "esphome/components/sensor/sensor.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/automation.h"
 #include "esphome/core/component.h"
@@ -25,14 +24,6 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
  public:
   using StateUpdateCallback = std::function<void(const State &)>;
 
-  void set_water_temperature_sensor(sensor::Sensor *sensor) { this->sen_water_temperature_ = sensor; }
-  void set_setpoint_temperature_sensor(sensor::Sensor *sensor) { this->sen_setpoint_temperature_ = sensor; }
-  void set_heater_temperature_sensor(sensor::Sensor *sensor) { this->sen_heater_temperature_ = sensor; }
-  void set_case_temperature_sensor(sensor::Sensor *sensor) { this->sen_case_temperature_ = sensor; }
-  void set_mains_voltage_sensor(sensor::Sensor *sensor) { this->sen_mains_voltage_ = sensor; }
-  void set_mains_current_sensor(sensor::Sensor *sensor) { this->sen_mains_current_ = sensor; }
-  void set_instant_power_sensor(sensor::Sensor *sensor) { this->sen_instant_power_ = sensor; }
-  void set_total_energy_sensor(sensor::Sensor *sensor) { this->sen_total_energy_ = sensor; }
   void set_time_source(esphome::time::RealTimeClock *time_source) { this->time_source_ = time_source; }
   void set_auto_sync_time(bool auto_sync_time) { this->auto_sync_time_ = auto_sync_time; }
   void set_auto_sync_interval_ms(uint32_t interval_ms) { this->auto_sync_interval_ms_ = interval_ms; }
@@ -55,23 +46,6 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   void process_command_timeouts_(uint32_t now_ms);
   virtual void send_uart_command_(const std::string &command);
 
-  template<typename T> void publish_float_sensor_if_changed_(sensor::Sensor *sensor, const T &optional_value) {
-    if (sensor != nullptr && optional_value.has_value()) {
-      const float next_value = optional_value.value();
-      if (std::isnan(sensor->state) || sensor->state != next_value) {
-        sensor->publish_state(next_value);
-      }
-    }
-  }
-
-  sensor::Sensor *sen_water_temperature_{nullptr};
-  sensor::Sensor *sen_setpoint_temperature_{nullptr};
-  sensor::Sensor *sen_heater_temperature_{nullptr};
-  sensor::Sensor *sen_case_temperature_{nullptr};
-  sensor::Sensor *sen_mains_voltage_{nullptr};
-  sensor::Sensor *sen_mains_current_{nullptr};
-  sensor::Sensor *sen_instant_power_{nullptr};
-  sensor::Sensor *sen_total_energy_{nullptr};
   UartRxBuffer rx_buffer_{256};
   RegisterStore register_store_;
   UpdateDebounceGate state_update_debounce_{250};

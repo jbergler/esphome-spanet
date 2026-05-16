@@ -24,21 +24,6 @@ void SpaNetComponent::setup() {
   this->time_sync_->set_time_source(this->time_source_);
   this->time_sync_->set_auto_sync(this->auto_sync_time_, this->auto_sync_interval_ms_);
 
-  this->add_on_state_callback([this](const State &state) {
-    const auto &temperatures = state.temperatures;
-    const auto &power = state.power;
-    this->publish_float_sensor_if_changed_(this->sen_water_temperature_, temperatures.water_c);
-    this->publish_float_sensor_if_changed_(this->sen_setpoint_temperature_, temperatures.setpoint_c);
-    this->publish_float_sensor_if_changed_(this->sen_heater_temperature_, temperatures.heater_c);
-    this->publish_float_sensor_if_changed_(this->sen_case_temperature_, temperatures.case_c);
-
-    // Power
-    this->publish_float_sensor_if_changed_(this->sen_mains_voltage_, power.mains_voltage_v);
-    this->publish_float_sensor_if_changed_(this->sen_mains_current_, power.mains_current_a);
-    this->publish_float_sensor_if_changed_(this->sen_instant_power_, power.instant_power_w);
-    this->publish_float_sensor_if_changed_(this->sen_total_energy_, power.total_energy_kwh);
-  });
-
   // Trigger initial poll after startup delay; PollingComponent handles recurring polls.
   this->set_timeout(INITIAL_POLL_TIMEOUT, INITIAL_POLL_DELAY_MS, [this]() { this->update(); });
 }
@@ -143,30 +128,6 @@ void SpaNetComponent::notify_state_update_(const State &state) {
 void SpaNetComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "SpaNET dummy component");
   LOG_UPDATE_INTERVAL(this);
-  if (this->sen_water_temperature_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Water Temperature: %s", this->sen_water_temperature_->get_name().c_str());
-  }
-  if (this->sen_setpoint_temperature_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Setpoint Temperature: %s", this->sen_setpoint_temperature_->get_name().c_str());
-  }
-  if (this->sen_heater_temperature_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Heater Temperature: %s", this->sen_heater_temperature_->get_name().c_str());
-  }
-  if (this->sen_case_temperature_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Case Temperature: %s", this->sen_case_temperature_->get_name().c_str());
-  }
-  if (this->sen_mains_voltage_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Mains Voltage: %s", this->sen_mains_voltage_->get_name().c_str());
-  }
-  if (this->sen_mains_current_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Mains Current: %s", this->sen_mains_current_->get_name().c_str());
-  }
-  if (this->sen_instant_power_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Instant Power: %s", this->sen_instant_power_->get_name().c_str());
-  }
-  if (this->sen_total_energy_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Total Energy: %s", this->sen_total_energy_->get_name().c_str());
-  }
   if (this->time_sync_) {
     this->time_sync_->dump_config();
   }

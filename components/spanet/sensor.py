@@ -2,6 +2,7 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import sensor
 from esphome.const import (
+    CONF_ID,
     DEVICE_CLASS_CURRENT,
     DEVICE_CLASS_ENERGY,
     DEVICE_CLASS_POWER,
@@ -17,7 +18,7 @@ from esphome.const import (
     UNIT_WATT,
 )
 
-from . import CONF_SPANET_ID, SpaNetComponent
+from . import CONF_SPANET_ID, SpaNetComponent, spanet_ns
 
 DEPENDENCIES = ["spanet"]
 
@@ -30,7 +31,11 @@ CONF_MAINS_CURRENT = "mains_current"
 CONF_INSTANT_POWER = "instant_power"
 CONF_TOTAL_ENERGY = "total_energy"
 
+SpaNetSensor = spanet_ns.class_("SpaNetSensor", sensor.Sensor, cg.Component)
+SensorKind = spanet_ns.enum("SensorKind")
+
 temperature_sensor_schema = sensor.sensor_schema(
+    SpaNetSensor,
     unit_of_measurement=UNIT_CELSIUS,
     accuracy_decimals=1,
     device_class=DEVICE_CLASS_TEMPERATURE,
@@ -38,6 +43,7 @@ temperature_sensor_schema = sensor.sensor_schema(
 )
 
 diag_temperature_sensor_schema = sensor.sensor_schema(
+    SpaNetSensor,
     unit_of_measurement=UNIT_CELSIUS,
     accuracy_decimals=1,
     device_class=DEVICE_CLASS_TEMPERATURE,
@@ -46,6 +52,7 @@ diag_temperature_sensor_schema = sensor.sensor_schema(
 )
 
 voltage_sensor_schema = sensor.sensor_schema(
+    SpaNetSensor,
     unit_of_measurement=UNIT_VOLT,
     accuracy_decimals=0,
     device_class=DEVICE_CLASS_VOLTAGE,
@@ -54,6 +61,7 @@ voltage_sensor_schema = sensor.sensor_schema(
 )
 
 current_sensor_schema = sensor.sensor_schema(
+    SpaNetSensor,
     unit_of_measurement=UNIT_AMPERE,
     accuracy_decimals=1,
     device_class=DEVICE_CLASS_CURRENT,
@@ -62,6 +70,7 @@ current_sensor_schema = sensor.sensor_schema(
 )
 
 power_sensor_schema = sensor.sensor_schema(
+    SpaNetSensor,
     unit_of_measurement=UNIT_WATT,
     accuracy_decimals=1,
     device_class=DEVICE_CLASS_POWER,
@@ -70,6 +79,7 @@ power_sensor_schema = sensor.sensor_schema(
 )
 
 energy_sensor_schema = sensor.sensor_schema(
+    SpaNetSensor,
     unit_of_measurement=UNIT_KILOWATT_HOURS,
     accuracy_decimals=2,
     device_class=DEVICE_CLASS_ENERGY,
@@ -108,33 +118,41 @@ async def to_code(config):
     parent = await cg.get_variable(config[CONF_SPANET_ID])
 
     if CONF_WATER_TEMPERATURE in config:
-        water = await sensor.new_sensor(config[CONF_WATER_TEMPERATURE])
-        cg.add(parent.set_water_temperature_sensor(water))
+        var = cg.new_Pvariable(config[CONF_WATER_TEMPERATURE][CONF_ID], parent, SensorKind.kWaterTemperature)
+        await cg.register_component(var, config[CONF_WATER_TEMPERATURE])
+        await sensor.register_sensor(var, config[CONF_WATER_TEMPERATURE])
 
     if CONF_SETPOINT_TEMPERATURE in config:
-        setpoint = await sensor.new_sensor(config[CONF_SETPOINT_TEMPERATURE])
-        cg.add(parent.set_setpoint_temperature_sensor(setpoint))
+        var = cg.new_Pvariable(config[CONF_SETPOINT_TEMPERATURE][CONF_ID], parent, SensorKind.kSetpointTemperature)
+        await cg.register_component(var, config[CONF_SETPOINT_TEMPERATURE])
+        await sensor.register_sensor(var, config[CONF_SETPOINT_TEMPERATURE])
 
     if CONF_HEATER_TEMPERATURE in config:
-        heater = await sensor.new_sensor(config[CONF_HEATER_TEMPERATURE])
-        cg.add(parent.set_heater_temperature_sensor(heater))
+        var = cg.new_Pvariable(config[CONF_HEATER_TEMPERATURE][CONF_ID], parent, SensorKind.kHeaterTemperature)
+        await cg.register_component(var, config[CONF_HEATER_TEMPERATURE])
+        await sensor.register_sensor(var, config[CONF_HEATER_TEMPERATURE])
 
     if CONF_CASE_TEMPERATURE in config:
-        case = await sensor.new_sensor(config[CONF_CASE_TEMPERATURE])
-        cg.add(parent.set_case_temperature_sensor(case))
+        var = cg.new_Pvariable(config[CONF_CASE_TEMPERATURE][CONF_ID], parent, SensorKind.kCaseTemperature)
+        await cg.register_component(var, config[CONF_CASE_TEMPERATURE])
+        await sensor.register_sensor(var, config[CONF_CASE_TEMPERATURE])
 
     if CONF_MAINS_VOLTAGE in config:
-        mains_voltage = await sensor.new_sensor(config[CONF_MAINS_VOLTAGE])
-        cg.add(parent.set_mains_voltage_sensor(mains_voltage))
+        var = cg.new_Pvariable(config[CONF_MAINS_VOLTAGE][CONF_ID], parent, SensorKind.kMainsVoltage)
+        await cg.register_component(var, config[CONF_MAINS_VOLTAGE])
+        await sensor.register_sensor(var, config[CONF_MAINS_VOLTAGE])
 
     if CONF_MAINS_CURRENT in config:
-        mains_current = await sensor.new_sensor(config[CONF_MAINS_CURRENT])
-        cg.add(parent.set_mains_current_sensor(mains_current))
+        var = cg.new_Pvariable(config[CONF_MAINS_CURRENT][CONF_ID], parent, SensorKind.kMainsCurrent)
+        await cg.register_component(var, config[CONF_MAINS_CURRENT])
+        await sensor.register_sensor(var, config[CONF_MAINS_CURRENT])
 
     if CONF_INSTANT_POWER in config:
-        instant_power = await sensor.new_sensor(config[CONF_INSTANT_POWER])
-        cg.add(parent.set_instant_power_sensor(instant_power))
+        var = cg.new_Pvariable(config[CONF_INSTANT_POWER][CONF_ID], parent, SensorKind.kInstantPower)
+        await cg.register_component(var, config[CONF_INSTANT_POWER])
+        await sensor.register_sensor(var, config[CONF_INSTANT_POWER])
 
     if CONF_TOTAL_ENERGY in config:
-        total_energy = await sensor.new_sensor(config[CONF_TOTAL_ENERGY])
-        cg.add(parent.set_total_energy_sensor(total_energy))
+        var = cg.new_Pvariable(config[CONF_TOTAL_ENERGY][CONF_ID], parent, SensorKind.kTotalEnergy)
+        await cg.register_component(var, config[CONF_TOTAL_ENERGY])
+        await sensor.register_sensor(var, config[CONF_TOTAL_ENERGY])
