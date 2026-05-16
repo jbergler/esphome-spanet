@@ -407,6 +407,87 @@ TEST(RegisterStoreTest, MajorVersionUpdatesOnR3Overwrite) {
   EXPECT_EQ(store.get_state().controller_status.major_version, 6);
 }
 
+// R5[11] = ozone_active (0-indexed field 10), R5[16] = clean_cycle_active (0-indexed field 15)
+TEST(RegisterStoreTest, ParsesOzoneActiveFromR5) {
+  RegisterStore store;
+  // status_10 (field index 10) = "1" → ozone_active = true
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.spa_operating.ozone_active.has_value());
+  EXPECT_TRUE(state.spa_operating.ozone_active.value());
+}
+
+TEST(RegisterStoreTest, ParsesOzoneInactiveFromR5) {
+  RegisterStore store;
+  // status_10 (field index 10) = "0" → ozone_active = false
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,0,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.spa_operating.ozone_active.has_value());
+  EXPECT_FALSE(state.spa_operating.ozone_active.value());
+}
+
+TEST(RegisterStoreTest, ParsesCleanCycleActiveFromR5) {
+  RegisterStore store;
+  // status_15 (field index 15) = "1" → clean_cycle_active = true
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,0,0,1,0,394,1,23,0,4,0,0,0,1,2,6,6,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.spa_operating.clean_cycle_active.has_value());
+  EXPECT_TRUE(state.spa_operating.clean_cycle_active.value());
+}
+
+TEST(RegisterStoreTest, ParsesCleanCycleInactiveFromR5) {
+  RegisterStore store;
+  // status_15 (field index 15) = "0" → clean_cycle_active = false
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,0,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.spa_operating.clean_cycle_active.has_value());
+  EXPECT_FALSE(state.spa_operating.clean_cycle_active.value());
+}
+
+TEST(RegisterStoreTest, ParsesWaterPresentFromR2) {
+  RegisterStore store;
+  // water_present at field index 13 = "1" → water_present = true
+  put_line(store, ",R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,1,0,674,127,0,"
+                  "6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.spa_operating.water_present.has_value());
+  EXPECT_TRUE(state.spa_operating.water_present.value());
+}
+
+TEST(RegisterStoreTest, ParsesWaterAbsentFromR2) {
+  RegisterStore store;
+  // water_present at field index 13 = "0" → water_present = false
+  put_line(store, ",R2,0,239,40,81,0,10,46,36,11,5,2026,385,9999,0,0,674,127,0,"
+                  "6000,342132,42286,40243,44,0,0,0,650,39660,42484,126,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.spa_operating.water_present.has_value());
+  EXPECT_FALSE(state.spa_operating.water_present.value());
+}
+
+TEST(RegisterStoreTest, SpaOperatingStatusEmptyBeforeRegistersReceived) {
+  RegisterStore store;
+
+  const auto &state = store.get_state();
+  EXPECT_FALSE(state.spa_operating.ozone_active.has_value());
+  EXPECT_FALSE(state.spa_operating.clean_cycle_active.has_value());
+  EXPECT_FALSE(state.spa_operating.water_present.has_value());
+}
+
+TEST(RegisterStoreTest, SpaOperatingStatusEmptyWhenR5TooShort) {
+  RegisterStore store;
+  put_line(store, ",R5,0,1,0,5,:");
+
+  const auto &state = store.get_state();
+  EXPECT_FALSE(state.spa_operating.ozone_active.has_value());
+  EXPECT_FALSE(state.spa_operating.clean_cycle_active.has_value());
+}
+
 TEST(RegisterStoreTest, RfCompletionPredicateRoutesV2ToRe) {
   RegisterStore store;
   put_line(store, ",R3,10,1,4,4,4,SW V2 24 09 13,SVM1,SN1,SN2,:");

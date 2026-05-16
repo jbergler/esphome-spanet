@@ -170,6 +170,7 @@ RegisterStore::RegisterStore() {
       .temperatures = TemperatureStatus{},
       .power = PowerStatus{},
       .climate = ClimateStatus{},
+      .spa_operating = SpaOperatingStatus{},
       .light = LightStatus{},
       .pumps = {},
   };
@@ -230,12 +231,15 @@ void RegisterStore::update_controller_status() {
     this->state.temperatures.case_c = parse_tenths_celsius(r2.case_temperature);
     this->state.power.mains_voltage_v = parse_integer_float(r2.mains_voltage);
     this->state.power.mains_current_a = parse_scaled_float(r2.mains_current, 10.0f);
+    this->state.spa_operating.water_present = parse_bool_flag(r2.water_present);
   }
 
   if (this->registers_.r5.has_value()) {
     const auto &r5 = this->registers_.r5.value();
     this->state.temperatures.water_c = parse_tenths_celsius(r5.status_14);
     this->state.climate.heating_active = parse_bool_flag(r5.status_11);
+    this->state.spa_operating.ozone_active = parse_bool_flag(r5.status_10);
+    this->state.spa_operating.clean_cycle_active = parse_bool_flag(r5.status_15);
   }
 
   if (this->registers_.r6.has_value()) {

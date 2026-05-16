@@ -159,3 +159,15 @@ number:
   - platform: spanet
     spanet_id: spa_hub
     name: "Light Effect Speed"
+
+binary_sensor:
+  - platform: spanet
+    spanet_id: spa_hub
+    heating_active:
+      name: "Heating Active"
+    ozone_active:
+      name: "Ozone Active"
+    clean_cycle_active:
+      name: "Clean Cycle Active"
+    water_present:
+      name: "Water Present"
