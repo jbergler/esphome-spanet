@@ -25,20 +25,8 @@ void SpaNetComponent::setup() {
   this->time_sync_->set_auto_sync(this->auto_sync_time_, this->auto_sync_interval_ms_);
 
   this->add_on_state_callback([this](const State &state) {
-    const auto &controller = state.controller_status;
     const auto &temperatures = state.temperatures;
     const auto &power = state.power;
-
-    // Controller information
-    this->publish_text_sensor_if_changed_(this->sen_controller_model_, controller.model);
-    this->publish_text_sensor_if_changed_(this->sen_controller_fw_version_, controller.software_version);
-    this->publish_text_sensor_if_changed_(this->sen_controller_serial_, controller.serial_number);
-    if (controller.current_time.has_value()) {
-      this->publish_text_sensor_if_changed_(this->sen_current_time_,
-                                            SpaNetTimeSync::format_time_text(controller.current_time.value()));
-    }
-
-    // Temperatures
     this->publish_float_sensor_if_changed_(this->sen_water_temperature_, temperatures.water_c);
     this->publish_float_sensor_if_changed_(this->sen_setpoint_temperature_, temperatures.setpoint_c);
     this->publish_float_sensor_if_changed_(this->sen_heater_temperature_, temperatures.heater_c);
@@ -155,18 +143,6 @@ void SpaNetComponent::notify_state_update_(const State &state) {
 void SpaNetComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "SpaNET dummy component");
   LOG_UPDATE_INTERVAL(this);
-  if (this->sen_controller_model_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Model: %s", this->sen_controller_model_->get_name().c_str());
-  }
-  if (this->sen_controller_serial_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Serial: %s", this->sen_controller_serial_->get_name().c_str());
-  }
-  if (this->sen_controller_fw_version_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Firmware Version: %s", this->sen_controller_fw_version_->get_name().c_str());
-  }
-  if (this->sen_current_time_ != nullptr) {
-    ESP_LOGCONFIG(TAG, "  Current Time: %s", this->sen_current_time_->get_name().c_str());
-  }
   if (this->sen_water_temperature_ != nullptr) {
     ESP_LOGCONFIG(TAG, "  Water Temperature: %s", this->sen_water_temperature_->get_name().c_str());
   }

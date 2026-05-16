@@ -74,7 +74,7 @@ class CommandQueue {
 
   EnqueueResult enqueue(Command command);
   AckResult acknowledge(const std::string &message, InFlightCommand *matched_command,
-                        std::function<void(InFlightCommand &)> on_success);
+                        std::function<void(InFlightCommand &)> on_success = nullptr);
   bool expire_timed_out(uint32_t now_ms, InFlightCommand *timed_out_command, uint32_t *age_ms);
 
   bool has_pending_kind(CommandKind kind) const;

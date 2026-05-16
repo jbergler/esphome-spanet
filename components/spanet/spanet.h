@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "esphome/components/sensor/sensor.h"
-#include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/automation.h"
 #include "esphome/core/component.h"
@@ -26,10 +25,6 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
  public:
   using StateUpdateCallback = std::function<void(const State &)>;
 
-  void set_controller_model_sensor(text_sensor::TextSensor *sensor) { this->sen_controller_model_ = sensor; }
-  void set_controller_serial_sensor(text_sensor::TextSensor *sensor) { this->sen_controller_serial_ = sensor; }
-  void set_controller_fw_version_sensor(text_sensor::TextSensor *sensor) { this->sen_controller_fw_version_ = sensor; }
-  void set_current_time_sensor(text_sensor::TextSensor *sensor) { this->sen_current_time_ = sensor; }
   void set_water_temperature_sensor(sensor::Sensor *sensor) { this->sen_water_temperature_ = sensor; }
   void set_setpoint_temperature_sensor(sensor::Sensor *sensor) { this->sen_setpoint_temperature_ = sensor; }
   void set_heater_temperature_sensor(sensor::Sensor *sensor) { this->sen_heater_temperature_ = sensor; }
@@ -60,12 +55,6 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   void process_command_timeouts_(uint32_t now_ms);
   virtual void send_uart_command_(const std::string &command);
 
-  template<typename T> void publish_text_sensor_if_changed_(text_sensor::TextSensor *sensor, const T &value) {
-    if (sensor != nullptr && !value.empty() && sensor->get_raw_state() != value) {
-      sensor->publish_state(value);
-    }
-  }
-
   template<typename T> void publish_float_sensor_if_changed_(sensor::Sensor *sensor, const T &optional_value) {
     if (sensor != nullptr && optional_value.has_value()) {
       const float next_value = optional_value.value();
@@ -75,10 +64,6 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
     }
   }
 
-  text_sensor::TextSensor *sen_controller_model_{nullptr};
-  text_sensor::TextSensor *sen_controller_serial_{nullptr};
-  text_sensor::TextSensor *sen_controller_fw_version_{nullptr};
-  text_sensor::TextSensor *sen_current_time_{nullptr};
   sensor::Sensor *sen_water_temperature_{nullptr};
   sensor::Sensor *sen_setpoint_temperature_{nullptr};
   sensor::Sensor *sen_heater_temperature_{nullptr};
