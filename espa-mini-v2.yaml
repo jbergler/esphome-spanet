@@ -1,17 +1,18 @@
 substitutions:
-  name: "espa-mini-v1"
-  friendly_name: "eSPA Mini v1"
+  name: "espa-mini-v2"
+  friendly_name: "eSPA Mini v2"
   project_name: "jbergler.esphome-spanet"
   project_version: "0.1.0"
 
-  spa_uart_tx_pin: GPIO15
-  spa_uart_rx_pin: GPIO16
+  spa_uart_tx_pin: GPIO20
+  spa_uart_rx_pin: GPIO19
   spa_uart_baud: "38400"
 
   fallback_ap_password: "12345678"
 
 esp32:
-  board: esp32-s3-devkitc-1
+  board: esp32-c6-devkitc-1
+  flash_size: 8MB
   framework:
     type: esp-idf
 

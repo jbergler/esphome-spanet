@@ -1,0 +1,169 @@
+# Shared configuration for all eSPA Mini hardware variants.
+# Board-specific files must define these substitutions:
+#   name, friendly_name, project_name, project_version,
+#   spa_uart_tx_pin, spa_uart_rx_pin, spa_uart_baud,
+#   fallback_ap_password
+
+esphome:
+  name: "${name}"
+  friendly_name: "${friendly_name}"
+  name_add_mac_suffix: true
+  project:
+    name: "${project_name}"
+    version: "${project_version}"
+
+logger:
+  level: DEBUG
+
+api:
+  actions:
+    - action: set_current_time
+      then:
+        - lambda: |-
+            id(spa_hub).request_set_current_time_now();
+
+ota:
+  - platform: esphome
+  - platform: http_request
+
+http_request:
+
+update:
+  - platform: http_request
+    name: "Firmware Update"
+    source: "https://jbergler.github.io/esphome-spanet/${name}/manifest.json"
+
+wifi:
+  # Intentionally leave station credentials unset for creator-style provisioning.
+  ap:
+    ssid: "${friendly_name} Fallback"
+    password: "${fallback_ap_password}"
+
+captive_portal:
+
+dashboard_import:
+  package_import_url: "github://jbergler/esphome-spanet/${name}.yaml@main"
+  import_full_config: true
+
+# USB provisioning path for first-time setup.
+improv_serial:
+  next_url: "https://my.home-assistant.io/redirect/onboarding/?device_name={{device_name}}&ip_address={{ip_address}}"
+
+web_server:
+  port: 80
+  version: 2
+  local: true
+  compression: gzip
+  include_internal: false
+
+uart:
+  id: spa_uart
+  tx_pin: ${spa_uart_tx_pin}
+  rx_pin: ${spa_uart_rx_pin}
+  baud_rate: ${spa_uart_baud}
+
+time:
+  - platform: homeassistant
+    id: ha_time
+    on_time_sync:
+      then:
+        - delay: 5s
+        - spanet.set_current_time:
+            spanet_id: spa_hub
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+spanet:
+  id: spa_hub
+  uart_id: spa_uart
+  update_interval: 60s
+  time_id: ha_time
+
+climate:
+  - platform: spanet
+    spanet_id: spa_hub
+    name: "Temperature"
+
+text_sensor:
+  - platform: spanet
+    spanet_id: spa_hub
+    controller_model:
+      name: "Controller Model"
+    controller_serial:
+      name: "Controller Serial"
+    controller_fw_version:
+      name: "Controller FW Version"
+    current_time:
+      name: "Current Time"
+
+sensor:
+  - platform: spanet
+    spanet_id: spa_hub
+    water_temperature:
+      name: "Water Temperature"
+    setpoint_temperature:
+      name: "Setpoint Temperature"
+    heater_temperature:
+      name: "Heater Temperature"
+    case_temperature:
+      name: "Case Temperature"
+    mains_voltage:
+      name: "Mains Voltage"
+    mains_current:
+      name: "Mains Current"
+    instant_power:
+      name: "Instant Power"
+    total_energy:
+      name: "Total Energy"
+
+fan:
+  - platform: spanet
+    spanet_id: spa_hub
+    pump: 1
+    name: "Pump 1"
+  - platform: spanet
+    spanet_id: spa_hub
+    pump: 2
+    name: "Pump 2"
+  - platform: spanet
+    spanet_id: spa_hub
+    pump: 3
+    name: "Pump 3"
+  - platform: spanet
+    spanet_id: spa_hub
+    pump: 4
+    name: "Pump 4"
+  - platform: spanet
+    spanet_id: spa_hub
+    pump: 5
+    name: "Pump 5"
+
+light:
+  - platform: spanet
+    spanet_id: spa_hub
+    name: "Light"
+
+select:
+  - platform: spanet
+    spanet_id: spa_hub
+    name: "Light Effect"
+
+number:
+  - platform: spanet
+    spanet_id: spa_hub
+    name: "Light Effect Speed"
+
+binary_sensor:
+  - platform: spanet
+    spanet_id: spa_hub
+    heating_active:
+      name: "Heating Active"
+    ozone_active:
+      name: "Ozone Active"
+    clean_cycle_active:
+      name: "Clean Cycle Active"
+    water_present:
+      name: "Water Present"

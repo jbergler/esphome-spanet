@@ -9,7 +9,102 @@ permissions:
   contents: write  # create GitHub release + push gh-pages branch
 
 jobs:
-  build-and-release:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - config: espa-mini-v1.yaml
+            name: espa-mini-v1
+            friendly_name: "eSPA Mini v1"
+            chip: ESP32-S3
+          - config: espa-mini-v2.yaml
+            name: espa-mini-v2
+            friendly_name: "eSPA Mini v2"
+            chip: ESP32-C6
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      # Cache is keyed per board so each matrix leg has its own toolchain cache.
+      - name: Cache toolchain
+        uses: actions/cache@v4
+        with:
+          path: .docker-cache
+          key: toolchain-${{ matrix.name }}-${{ hashFiles(matrix.config, 'components/spanet/**') }}
+          restore-keys: |
+            toolchain-${{ matrix.name }}-
+
+      - name: Compile firmware
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/config" \
+            -v "${{ github.workspace }}/.docker-cache:/cache" \
+            ghcr.io/esphome/esphome:stable \
+            -s project_version "${{ env.VERSION }}" compile ${{ matrix.config }}
+
+      # Docker runs as root; reclaim ownership before subsequent steps.
+      - name: Fix file ownership
+        run: sudo chown -R "$USER:$USER" .esphome .docker-cache || true
+
+      - name: Assemble dist
+        run: |
+          BUILD=.esphome/build/${{ matrix.name }}/.pioenvs/${{ matrix.name }}
+          mkdir -p dist/${{ matrix.name }}
+          cp "$BUILD/firmware.factory.bin" dist/${{ matrix.name }}/${{ matrix.name }}.factory.bin
+          cp "$BUILD/firmware.ota.bin"     dist/${{ matrix.name }}/${{ matrix.name }}.ota.bin
+
+      - name: Generate manifest.json
+        env:
+          BOARD_NAME: ${{ matrix.name }}
+          FRIENDLY_NAME: ${{ matrix.friendly_name }}
+          CHIP: ${{ matrix.chip }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, hashlib
+          name     = os.environ["BOARD_NAME"]
+          friendly = os.environ["FRIENDLY_NAME"]
+          chip     = os.environ["CHIP"]
+          version  = os.environ["VERSION"]
+          ota_bin  = f"dist/{name}/{name}.ota.bin"
+          with open(ota_bin, "rb") as f:
+              md5 = hashlib.md5(f.read()).hexdigest()
+          manifest = {
+              "name": friendly,
+              "version": version,
+              "home_assistant_domain": "esphome",
+              "new_install_prompt_erase": True,
+              "builds": [
+                  {
+                      "chipFamily": chip,
+                      "parts": [
+                          {"path": f"{name}.factory.bin", "offset": 0}
+                      ],
+                      "ota": {
+                          "path": f"{name}.ota.bin",
+                          "md5": md5,
+                      },
+                  }
+              ],
+          }
+          with open(f"dist/{name}/manifest.json", "w") as f:
+              json.dump(manifest, f, indent=2)
+              f.write("\n")
+          PYEOF
+
+      - name: Upload board artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.name }}
+          path: dist/${{ matrix.name }}/
+          if-no-files-found: error
+
+  release:
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
@@ -19,103 +114,97 @@ jobs:
       - name: Set version from tag
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
-      # Cache the ESP-IDF toolchain. The ESPHome container uses /cache for its
-      # PlatformIO and ESP-IDF toolchain data, so we mount a workspace subdir there.
-      - name: Cache toolchain
-        uses: actions/cache@v4
+      - name: Download all board artifacts
+        uses: actions/download-artifact@v4
         with:
-          path: .docker-cache
-          key: toolchain-${{ hashFiles('espa-mini-v1.yaml', 'components/spanet/**') }}
-          restore-keys: |
-            toolchain-
+          pattern: firmware-*
+          path: dist
+          merge-multiple: false
 
-      - name: Compile firmware
+      # Artifacts land in dist/firmware-<name>/ — rename to dist/<name>/
+      - name: Flatten artifact directories
         run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/config" \
-            -v "${{ github.workspace }}/.docker-cache:/cache" \
-            ghcr.io/esphome/esphome:stable \
-            -s project_version "${{ env.VERSION }}" compile espa-mini-v1.yaml
-
-      # Docker runs as root; reclaim ownership before subsequent steps.
-      - name: Fix file ownership
-        run: sudo chown -R "$USER:$USER" .esphome .docker-cache || true
-
-      - name: Assemble dist
-        run: |
-          BUILD=.esphome/build/espa-mini-v1/.pioenvs/espa-mini-v1
-          mkdir -p dist/espa-mini-v1
-          cp "$BUILD/firmware.factory.bin" dist/espa-mini-v1/espa-mini-v1.factory.bin
-          cp "$BUILD/firmware.ota.bin"     dist/espa-mini-v1/espa-mini-v1.ota.bin
-
-      - name: Generate manifest.json
-        run: |
-          python3 - <<'PYEOF'
-          import json, os, hashlib
-          ota_bin = "dist/espa-mini-v1/espa-mini-v1.ota.bin"
-          with open(ota_bin, "rb") as f:
-              md5 = hashlib.md5(f.read()).hexdigest()
-          manifest = {
-              "name": "eSPA Mini v1",
-              "version": os.environ["VERSION"],
-              "home_assistant_domain": "esphome",
-              "new_install_prompt_erase": True,
-              "builds": [
-                  {
-                      "chipFamily": "ESP32-S3",
-                      "parts": [
-                          {"path": "espa-mini-v1.factory.bin", "offset": 0}
-                      ],
-                      "ota": {
-                          "path": "espa-mini-v1.ota.bin",
-                          "md5": md5,
-                      },
-                  }
-              ],
-          }
-          with open("dist/espa-mini-v1/manifest.json", "w") as f:
-              json.dump(manifest, f, indent=2)
-              f.write("\n")
-          PYEOF
+          for d in dist/firmware-*/; do
+            board="${d#dist/firmware-}"
+            board="${board%/}"
+            mv "$d" "dist/$board"
+          done
 
       - name: Generate index.html
         run: |
-          VERSION="${{ env.VERSION }}"
-          mkdir -p dist
-          cat > dist/index.html <<HTMLEOF
-          <!DOCTYPE html>
+          python3 - <<'PYEOF'
+          import os
+
+          version = os.environ["VERSION"]
+
+          boards = [
+              {
+                  "name": "espa-mini-v1",
+                  "friendly": "eSPA Mini v1",
+                  "chip": "ESP32-S3",
+                  "desc": "devkitc-1 &mdash; GPIO15/16 UART",
+              },
+              {
+                  "name": "espa-mini-v2",
+                  "friendly": "eSPA Mini v2",
+                  "chip": "ESP32-C6",
+                  "desc": "devkitc-1 &mdash; GPIO20/19 UART, 8 MB flash",
+              },
+          ]
+
+          cards = ""
+          for b in boards:
+              cards += f"""
+            <section>
+              <h2>{b['friendly']}</h2>
+              <p class="meta">{b['chip']} &middot; {b['desc']}</p>
+              <esp-web-install-button manifest="{b['name']}/manifest.json"></esp-web-install-button>
+            </section>"""
+
+          html = f"""<!DOCTYPE html>
           <html lang="en">
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>eSPA Mini v1 Installer</title>
+            <title>eSPA Mini Installer</title>
             <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
             <style>
-              body {
+              body {{
                 font-family: sans-serif;
-                max-width: 640px;
+                max-width: 680px;
                 margin: 3rem auto;
                 padding: 0 1.5rem;
                 color: #222;
-              }
-              h1 { margin-bottom: 0.25rem; }
-              .version { color: #666; font-size: 0.9rem; margin-bottom: 2rem; }
-              esp-web-install-button { display: block; margin: 1.5rem 0; }
-              footer { margin-top: 3rem; font-size: 0.8rem; color: #888; }
+              }}
+              h1 {{ margin-bottom: 0.25rem; }}
+              .version {{ color: #666; font-size: 0.9rem; margin-bottom: 2rem; }}
+              section {{
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 1.25rem 1.5rem;
+                margin-bottom: 1.5rem;
+              }}
+              section h2 {{ margin: 0 0 0.25rem; }}
+              .meta {{ color: #666; font-size: 0.85rem; margin: 0 0 1rem; }}
+              esp-web-install-button {{ display: block; }}
+              footer {{ margin-top: 3rem; font-size: 0.8rem; color: #888; }}
             </style>
           </head>
           <body>
-            <h1>eSPA Mini v1</h1>
-            <p class="version">Version ${VERSION}</p>
-            <p>Connect your ESP32-S3 via USB, then click <strong>Install</strong>.</p>
-            <esp-web-install-button manifest="espa-mini-v1/manifest.json"></esp-web-install-button>
+            <h1>eSPA Mini Installer</h1>
+            <p class="version">Version {version}</p>
+            <p>Connect your board via USB, select the matching hardware version, then click <strong>Install</strong>.</p>
+            {cards}
             <footer>
-              Requires Chrome or Edge with Web Serial support.
+              Requires Chrome or Edge with Web Serial support. &nbsp;
               <a href="https://github.com/jbergler/esphome-spanet">Source on GitHub</a>
             </footer>
           </body>
           </html>
-          HTMLEOF
+          """
+          with open("dist/index.html", "w") as f:
+              f.write(html)
+          PYEOF
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
@@ -131,3 +220,5 @@ jobs:
           files: |
             dist/espa-mini-v1/espa-mini-v1.factory.bin
             dist/espa-mini-v1/espa-mini-v1.ota.bin
+            dist/espa-mini-v2/espa-mini-v2.factory.bin
+            dist/espa-mini-v2/espa-mini-v2.ota.bin
