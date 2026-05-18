@@ -149,12 +149,20 @@ light:
 select:
   - platform: spanet
     spanet_id: spa_hub
-    name: "Light Effect"
+    light_effect:
+      name: "Light Effect"
+    operating_mode:
+      name: "Operating Mode"
 
 number:
   - platform: spanet
     spanet_id: spa_hub
-    name: "Light Effect Speed"
+    light_effect_speed:
+      name: "Light Effect Speed"
+    filtration_hours:
+      name: "Filtration Hours"
+    filtration_block_hours:
+      name: "Filtration Block Duration"
 
 binary_sensor:
   - platform: spanet

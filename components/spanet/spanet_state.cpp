@@ -171,6 +171,7 @@ RegisterStore::RegisterStore() {
       .power = PowerStatus{},
       .climate = ClimateStatus{},
       .spa_operating = SpaOperatingStatus{},
+      .filtration = FiltrationSettings{},
       .light = LightStatus{},
       .pumps = {},
   };
@@ -245,6 +246,8 @@ void RegisterStore::update_controller_status() {
   if (this->registers_.r6.has_value()) {
     const auto &r6 = this->registers_.r6.value();
     this->state.temperatures.setpoint_c = parse_tenths_celsius(r6.set_temperature);
+    this->state.filtration.set_hrs = parse_integer(r6.filt_set_hrs);
+    this->state.filtration.block_hrs = parse_integer(r6.filt_block_hrs);
   }
 
   // Parse light status from R5[14] (status_13) and R6 fields
@@ -295,6 +298,8 @@ void RegisterStore::update_controller_status() {
     const auto &r4 = this->registers_.r4.value();
     this->state.power.instant_power_w = parse_scaled_float(r4.power, 10.0f);
     this->state.power.total_energy_kwh = parse_scaled_float(r4.power_kwh, 100.0f);
+    this->state.spa_operating.operating_mode =
+        r4.mode.empty() ? std::optional<std::string>{} : std::optional<std::string>{r4.mode};
   }
 
   for (size_t i = 0; i < this->state.pumps.size(); i++) {

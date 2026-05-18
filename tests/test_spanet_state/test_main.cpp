@@ -358,6 +358,40 @@ TEST(ControllerStatusIntegrationTest, ParsesFullExamplePayloadFromFile) {
   EXPECT_NEAR(state.temperatures.setpoint_c.value(), 39.0f, 0.01f);
 }
 
+TEST(RegisterStoreTest, DecodesOperatingModeFromR4) {
+  RegisterStore store;
+  put_line(store, ",R4,ECON,0,0,0,2,0,254,4,20,0,0,0,0,0,0,0,262144,3,0,101,0,"
+                  "2022,6,80,50,0,0,5,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.spa_operating.operating_mode.has_value());
+  EXPECT_EQ(state.spa_operating.operating_mode.value(), "ECON");
+}
+
+TEST(RegisterStoreTest, DecodesFiltrationSetHrsFromR6) {
+  RegisterStore store;
+  // R6: fields[5]=filt_set_hrs=8, fields[6]=filt_block_hrs=24
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, ",R6,5,3,1,1,5,8,24,390,1,0,3584,5120,31,96,5632,5918,1792,"
+                  "1792,0,30,0,0,0,0,1,5,0,410,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.filtration.set_hrs.has_value());
+  EXPECT_EQ(state.filtration.set_hrs.value(), 8);
+}
+
+TEST(RegisterStoreTest, DecodesFiltrationBlockHrsFromR6) {
+  RegisterStore store;
+  // R6: fields[5]=filt_set_hrs=8, fields[6]=filt_block_hrs=24
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, ",R6,5,3,1,1,5,8,24,390,1,0,3584,5120,31,96,5632,5918,1792,"
+                  "1792,0,30,0,0,0,0,1,5,0,410,:");
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.filtration.block_hrs.has_value());
+  EXPECT_EQ(state.filtration.block_hrs.value(), 24);
+}
+
 TEST(ControllerStatusIntegrationTest, CurrentTimeEmptyWhenOnlyR3Received) {
   RegisterStore store;
   store.update(",R3,10,20,30,40,50,SW V6 21 12 13,SVM1,21460001,20000999,:");

@@ -30,6 +30,9 @@ enum class CommandKind {
   kLightColor,
   kLightEffectMode,
   kLightEffectSpeed,
+  kOperatingModeWrite,
+  kFiltHrsWrite,
+  kFiltBlockHrsWrite,
 };
 
 struct Command {

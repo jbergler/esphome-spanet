@@ -40,6 +40,12 @@ struct SpaOperatingStatus {
   std::optional<bool> ozone_active;
   std::optional<bool> clean_cycle_active;
   std::optional<bool> water_present;
+  std::optional<std::string> operating_mode;  // "NORM"/"ECON"/"AWAY"/"WEEK"
+};
+
+struct FiltrationSettings {
+  std::optional<int> set_hrs;    // Configured filtration run hours (1-24)
+  std::optional<int> block_hrs;  // Configured filtration block duration
 };
 
 struct LightStatus {
@@ -71,6 +77,7 @@ struct State {
   PowerStatus power;
   ClimateStatus climate;
   SpaOperatingStatus spa_operating;
+  FiltrationSettings filtration;
   LightStatus light;
   std::array<PumpStatus, 5> pumps;
 };
