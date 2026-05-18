@@ -74,6 +74,24 @@ When changing parser or register decoding:
 6. Use existing fan/climate implementations as reference patterns.
 7. Add entity config to `espa-mini-base.yaml` (shared across all boards).
 
+### Entity Category Convention
+
+Set `entity_category` in the schema definition (not in `to_code`), matching the pattern in `sensor.py`:
+
+| Category | When to use | Examples |
+|---|---|---|
+| `ENTITY_CATEGORY_CONFIG` | Runtime configuration — user-set parameters that govern device behaviour | `operating_mode`, `filtration_hours`, `filtration_block_hours` |
+| `ENTITY_CATEGORY_DIAGNOSTIC` | Read-only telemetry and device identity | temperatures, voltage, energy, model/serial |
+| *(none)* | Primary user-facing controls and status indicators | climate, fan, light, light effect, binary sensors |
+
+Import from `esphome.const` and pass to the platform schema helper:
+
+```python
+from esphome.const import CONF_ID, ENTITY_CATEGORY_CONFIG
+
+cv.Optional(CONF_FOO): number.number_schema(SpaNetFooNumber, entity_category=ENTITY_CATEGORY_CONFIG),
+```
+
 ### Python Platform Schema Convention
 
 Multi-entity platforms use **named optional keys** under a single `- platform: spanet` entry — not a list of entries with a type discriminator. Follow the pattern in `sensor.py` and `select.py`/`number.py`:
