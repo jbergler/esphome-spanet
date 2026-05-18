@@ -1,6 +1,6 @@
 {
   "name": "eSPA Mini v1",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "home_assistant_domain": "esphome",
   "new_install_prompt_erase": true,
   "builds": [
@@ -14,7 +14,7 @@
       ],
       "ota": {
         "path": "espa-mini-v1.ota.bin",
-        "md5": "bb20d7a64c8c2a9ef8e45ce689625c27"
+        "md5": "64fe750e14c00fe962b98eda50babfd7"
       }
     }
   ]
