@@ -66,12 +66,40 @@ When changing parser or register decoding:
 
 ## Adding New Entities (Checklist)
 
-1. Add Python schema and `to_code` wiring.
+1. Add Python schema and `to_code` wiring (see convention below).
 2. Add/extend C++ request path in `SpaNetComponent` for writable entities.
 3. Map register fields into normalized component state.
 4. Subscribe with `add_on_state_callback` and publish on meaningful change.
 5. Add focused tests for queue/ack behavior and state mapping.
 6. Use existing fan/climate implementations as reference patterns.
+7. Add entity config to `espa-mini-base.yaml` (shared across all boards).
+
+### Python Platform Schema Convention
+
+Multi-entity platforms use **named optional keys** under a single `- platform: spanet` entry — not a list of entries with a type discriminator. Follow the pattern in `sensor.py` and `select.py`/`number.py`:
+
+```python
+CONFIG_SCHEMA = cv.All(
+    cv.Schema({
+        cv.GenerateID(CONF_SPANET_ID): cv.use_id(SpaNetComponent),
+        cv.Optional(CONF_FOO): foo_schema,
+        cv.Optional(CONF_BAR): bar_schema,
+    }),
+    cv.has_at_least_one_key(CONF_FOO, CONF_BAR),
+)
+```
+
+In YAML this produces one entry with named sub-keys, not multiple list entries:
+
+```yaml
+some_platform:
+  - platform: spanet
+    spanet_id: spa_hub
+    foo:
+      name: "Foo"
+    bar:
+      name: "Bar"
+```
 
 ## Required Validation Before Finishing
 
@@ -79,6 +107,8 @@ Run from repo root:
 
 1. `pio test -e cpp-test`
 2. `esphome compile tests/spanet/test.esp32-idf.yaml`
+
+If new `.cpp` files were added to `components/spanet/`, run `esphome clean tests/spanet/test.esp32-idf.yaml` before compiling — otherwise the build cache won't include the new sources and you'll get linker errors.
 
 If parser/register/UART behavior changed, update parser/UART tests as needed:
 - `tests/test_spanet_parser/test_main.cpp`
@@ -94,5 +124,5 @@ If parser/register/UART behavior changed, update parser/UART tests as needed:
 
 
 ## Tasks to remember
-- When adding new entities, update `espa-mini-v1.yaml` to ensure the default build includes them.
+- When adding new entities, add shared config to `espa-mini-base.yaml` (applies to all boards). Only hardware-specific wiring (pins, status LEDs) belongs in `espa-mini-v1.yaml` / `espa-mini-v2.yaml`.
 - When planning support for new functionality, research the implementation in https://github.com/wayne-love/espyspa to understand protocol, quirks, edge cases, etc.
