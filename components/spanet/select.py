@@ -1,7 +1,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import select
-from esphome.const import CONF_ID
+from esphome.const import CONF_ID, ENTITY_CATEGORY_CONFIG
 
 from . import CONF_SPANET_ID, SpaNetComponent, spanet_ns
 
@@ -18,7 +18,7 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(CONF_SPANET_ID): cv.use_id(SpaNetComponent),
             cv.Optional(CONF_LIGHT_EFFECT): select.select_schema(SpaNetLightEffectSelect),
-            cv.Optional(CONF_OPERATING_MODE): select.select_schema(SpaNetOperatingModeSelect),
+            cv.Optional(CONF_OPERATING_MODE): select.select_schema(SpaNetOperatingModeSelect, entity_category=ENTITY_CATEGORY_CONFIG),
         }
     ),
     cv.has_at_least_one_key(CONF_LIGHT_EFFECT, CONF_OPERATING_MODE),

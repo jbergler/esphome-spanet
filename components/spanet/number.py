@@ -1,7 +1,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import number
-from esphome.const import CONF_ID
+from esphome.const import CONF_ID, ENTITY_CATEGORY_CONFIG
 
 from . import CONF_SPANET_ID, SpaNetComponent, spanet_ns
 
@@ -22,8 +22,8 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(CONF_SPANET_ID): cv.use_id(SpaNetComponent),
             cv.Optional(CONF_LIGHT_EFFECT_SPEED): number.number_schema(SpaNetLightEffectSpeedNumber),
-            cv.Optional(CONF_FILTRATION_HOURS): number.number_schema(SpaNetFiltHrsNumber),
-            cv.Optional(CONF_FILTRATION_BLOCK_HOURS): number.number_schema(SpaNetFiltBlockHrsNumber),
+            cv.Optional(CONF_FILTRATION_HOURS): number.number_schema(SpaNetFiltHrsNumber, entity_category=ENTITY_CATEGORY_CONFIG),
+            cv.Optional(CONF_FILTRATION_BLOCK_HOURS): number.number_schema(SpaNetFiltBlockHrsNumber, entity_category=ENTITY_CATEGORY_CONFIG),
         }
     ),
     cv.has_at_least_one_key(
