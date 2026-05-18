@@ -6,7 +6,7 @@ from esphome.const import CONF_ID, CONF_TIME_ID
 
 CODEOWNERS = ["@jbergler"]
 DEPENDENCIES = ["uart"]
-AUTO_LOAD = ["text_sensor", "sensor", "climate", "fan", "light", "select", "number", "time", "binary_sensor"]
+AUTO_LOAD = ["text_sensor", "sensor", "climate", "fan", "light", "output", "select", "number", "time", "binary_sensor"]
 
 CONF_SPANET_ID = "spanet_id"
 CONF_AUTO_SYNC_INTERVAL = "auto_sync_interval"
