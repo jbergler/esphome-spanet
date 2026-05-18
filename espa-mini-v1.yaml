@@ -17,3 +17,23 @@ esp32:
 
 packages:
   base: !include espa-mini-base.yaml
+
+output:
+  - platform: gpio
+    id: status_led_1
+    pin: GPIO14
+  - platform: gpio
+    id: status_led_2
+    pin: GPIO41
+  - platform: gpio
+    id: status_led_3
+    pin: GPIO42
+  # GPIO43 omitted: conflicts with USB on ESP32-S3
+
+spanet:
+  id: spa_hub
+  status:
+    leds:
+      - status_led_1
+      - status_led_2
+      - status_led_3

@@ -15,6 +15,11 @@ uart:
   rx_pin: GPIO16
   baud_rate: 38400
 
+output:
+  - platform: gpio
+    id: status_led
+    pin: GPIO2
+
 external_components:
   - source:
       type: local
@@ -23,6 +28,8 @@ external_components:
 spanet:
   id: spa_hub
   uart_id: spa_uart
+  status:
+    led: status_led
 
 text_sensor:
   - platform: spanet

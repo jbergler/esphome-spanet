@@ -92,6 +92,7 @@ void SpaNetComponent::on_uart_message_(const std::string &message) {
 }
 
 void SpaNetComponent::on_state_update_message_(const std::string &message) {
+  this->last_rf_poll_ms_ = millis();
   if (!this->register_store_.update(message)) {
     ESP_LOGW(TAG, "Failed to update register store for SpaNET state payload");
     return;
@@ -115,7 +116,6 @@ void SpaNetComponent::update() {
       .expected_acks = {"RF:"},
       .completion_predicate = make_rf_completion_predicate(this->register_store_),
       .timeout_ms = RF_POLL_TIMEOUT_MS,
-      .triggers_rf_poll = false,
   });
 }
 
@@ -126,7 +126,7 @@ void SpaNetComponent::notify_state_update_(const State &state) {
 }
 
 void SpaNetComponent::dump_config() {
-  ESP_LOGCONFIG(TAG, "SpaNET dummy component");
+  ESP_LOGCONFIG(TAG, "SpaNET component");
   LOG_UPDATE_INTERVAL(this);
   if (this->time_sync_) {
     this->time_sync_->dump_config();
@@ -151,6 +151,12 @@ void SpaNetComponent::enqueue_command_(Command command) {
                payload.c_str());
       return;
   }
+}
+
+bool SpaNetComponent::is_spa_data_fresh(uint32_t timeout_ms) const {
+  if (this->last_rf_poll_ms_ == 0)
+    return false;
+  return (millis() - this->last_rf_poll_ms_) < timeout_ms;
 }
 
 bool SpaNetComponent::has_pending_command_kind_(CommandKind kind) const {

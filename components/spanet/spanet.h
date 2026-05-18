@@ -29,6 +29,7 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   void set_auto_sync_interval_ms(uint32_t interval_ms) { this->auto_sync_interval_ms_ = interval_ms; }
   void add_on_state_callback(StateUpdateCallback callback) { this->state_callbacks_.push_back(std::move(callback)); }
   const State &get_state() const { return this->register_store_.get_state(); }
+  bool is_spa_data_fresh(uint32_t timeout_ms = 120000) const;
   bool request_set_current_time(time_t unix_time);
   bool request_set_current_time_now();
   void enqueue_command_(Command command);
@@ -52,6 +53,8 @@ class SpaNetComponent : public PollingComponent, public uart::UARTDevice {
   std::vector<StateUpdateCallback> state_callbacks_;
   std::unique_ptr<CommandQueue> command_queue_;
   std::unique_ptr<SpaNetTimeSync> time_sync_;
+
+  uint32_t last_rf_poll_ms_{0};
 
   // Staging values for time sync configuration (set before setup() is called).
   esphome::time::RealTimeClock *time_source_{nullptr};
