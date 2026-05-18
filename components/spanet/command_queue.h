@@ -33,6 +33,12 @@ enum class CommandKind {
   kOperatingModeWrite,
   kFiltHrsWrite,
   kFiltBlockHrsWrite,
+  kSleepTimer1DayWrite,
+  kSleepTimer1BeginWrite,
+  kSleepTimer1EndWrite,
+  kSleepTimer2DayWrite,
+  kSleepTimer2BeginWrite,
+  kSleepTimer2EndWrite,
 };
 
 struct Command {

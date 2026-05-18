@@ -102,6 +102,10 @@ select:
       name: "SpaNET Light Effect"
     operating_mode:
       name: "SpaNET Operating Mode"
+    sleep_timer_1_day:
+      name: "SpaNET Sleep Timer 1 Active Days"
+    sleep_timer_2_day:
+      name: "SpaNET Sleep Timer 2 Active Days"
 
 number:
   - platform: spanet
@@ -112,6 +116,22 @@ number:
       name: "SpaNET Filtration Hours"
     filtration_block_hours:
       name: "SpaNET Filtration Block Duration"
+    sleep_timer_1_begin_hour:
+      name: "SpaNET Sleep Timer 1 Begin Hour"
+    sleep_timer_1_begin_minute:
+      name: "SpaNET Sleep Timer 1 Begin Minute"
+    sleep_timer_1_end_hour:
+      name: "SpaNET Sleep Timer 1 End Hour"
+    sleep_timer_1_end_minute:
+      name: "SpaNET Sleep Timer 1 End Minute"
+    sleep_timer_2_begin_hour:
+      name: "SpaNET Sleep Timer 2 Begin Hour"
+    sleep_timer_2_begin_minute:
+      name: "SpaNET Sleep Timer 2 Begin Minute"
+    sleep_timer_2_end_hour:
+      name: "SpaNET Sleep Timer 2 End Hour"
+    sleep_timer_2_end_minute:
+      name: "SpaNET Sleep Timer 2 End Minute"
 
 binary_sensor:
   - platform: spanet

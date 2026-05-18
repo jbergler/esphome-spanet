@@ -48,6 +48,15 @@ struct FiltrationSettings {
   std::optional<int> block_hrs;  // Configured filtration block duration
 };
 
+struct SleepTimerStatus {
+  std::optional<int> timer1_day_pattern;  // raw: 128=off, 127=daily, 96=weekends, 31=weekdays
+  std::optional<int> timer1_begin_wire;   // HH*256+MM wire encoding
+  std::optional<int> timer1_end_wire;     // HH*256+MM wire encoding
+  std::optional<int> timer2_day_pattern;
+  std::optional<int> timer2_begin_wire;
+  std::optional<int> timer2_end_wire;
+};
+
 struct LightStatus {
   bool is_on{false};
   uint8_t brightness{1};    // Device scale: 1-5
@@ -78,6 +87,7 @@ struct State {
   ClimateStatus climate;
   SpaOperatingStatus spa_operating;
   FiltrationSettings filtration;
+  SleepTimerStatus sleep_timers;
   LightStatus light;
   std::array<PumpStatus, 5> pumps;
 };

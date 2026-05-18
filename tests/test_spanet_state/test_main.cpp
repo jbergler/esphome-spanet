@@ -392,6 +392,72 @@ TEST(RegisterStoreTest, DecodesFiltrationBlockHrsFromR6) {
   EXPECT_EQ(state.filtration.block_hrs.value(), 24);
 }
 
+// R6 sleep timer test line: fields[12]=31 (timer1 day=Weekdays),
+// fields[13]=96 (timer2 day=Weekends), fields[14]=5632 (timer1 begin=22:00),
+// fields[15]=5918 (timer2 begin=23:30), fields[16]=1792 (timer1 end=07:00),
+// fields[17]=1792 (timer2 end=07:00).
+static constexpr const char *kR6SleepTimerLine =
+    ",R6,5,3,1,1,5,8,24,390,1,0,3584,5120,31,96,5632,5918,1792,1792,0,30,0,0,0,0,1,5,0,410,:";
+
+TEST(RegisterStoreTest, DecodesSleepTimerDayPatternsFromR6) {
+  RegisterStore store;
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, kR6SleepTimerLine);
+
+  const auto &state = store.get_state();
+  ASSERT_TRUE(state.sleep_timers.timer1_day_pattern.has_value());
+  EXPECT_EQ(state.sleep_timers.timer1_day_pattern.value(), 31);  // Weekdays
+  ASSERT_TRUE(state.sleep_timers.timer2_day_pattern.has_value());
+  EXPECT_EQ(state.sleep_timers.timer2_day_pattern.value(), 96);  // Weekends
+}
+
+TEST(RegisterStoreTest, DecodesSleepTimerBeginWireFromR6) {
+  RegisterStore store;
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, kR6SleepTimerLine);
+
+  const auto &state = store.get_state();
+  // timer1 begin: 5632 = 22*256+0 → 22:00
+  ASSERT_TRUE(state.sleep_timers.timer1_begin_wire.has_value());
+  EXPECT_EQ(state.sleep_timers.timer1_begin_wire.value(), 5632);
+  EXPECT_EQ(state.sleep_timers.timer1_begin_wire.value() / 256, 22);
+  EXPECT_EQ(state.sleep_timers.timer1_begin_wire.value() % 256, 0);
+  // timer2 begin: 5918 = 23*256+30 → 23:30
+  ASSERT_TRUE(state.sleep_timers.timer2_begin_wire.has_value());
+  EXPECT_EQ(state.sleep_timers.timer2_begin_wire.value(), 5918);
+  EXPECT_EQ(state.sleep_timers.timer2_begin_wire.value() / 256, 23);
+  EXPECT_EQ(state.sleep_timers.timer2_begin_wire.value() % 256, 30);
+}
+
+TEST(RegisterStoreTest, DecodesSleepTimerEndWireFromR6) {
+  RegisterStore store;
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+  put_line(store, kR6SleepTimerLine);
+
+  const auto &state = store.get_state();
+  // timer1 end: 1792 = 7*256+0 → 07:00
+  ASSERT_TRUE(state.sleep_timers.timer1_end_wire.has_value());
+  EXPECT_EQ(state.sleep_timers.timer1_end_wire.value(), 1792);
+  EXPECT_EQ(state.sleep_timers.timer1_end_wire.value() / 256, 7);
+  EXPECT_EQ(state.sleep_timers.timer1_end_wire.value() % 256, 0);
+  // timer2 end: 1792 = 7*256+0 → 07:00
+  ASSERT_TRUE(state.sleep_timers.timer2_end_wire.has_value());
+  EXPECT_EQ(state.sleep_timers.timer2_end_wire.value(), 1792);
+}
+
+TEST(RegisterStoreTest, SleepTimerFieldsNulloptWhenR6Absent) {
+  RegisterStore store;
+  put_line(store, ",R5,0,1,0,5,0,0,0,0,0,0,1,0,1,0,394,0,23,0,4,0,0,0,1,2,6,6,:");
+
+  const auto &state = store.get_state();
+  EXPECT_FALSE(state.sleep_timers.timer1_day_pattern.has_value());
+  EXPECT_FALSE(state.sleep_timers.timer1_begin_wire.has_value());
+  EXPECT_FALSE(state.sleep_timers.timer1_end_wire.has_value());
+  EXPECT_FALSE(state.sleep_timers.timer2_day_pattern.has_value());
+  EXPECT_FALSE(state.sleep_timers.timer2_begin_wire.has_value());
+  EXPECT_FALSE(state.sleep_timers.timer2_end_wire.has_value());
+}
+
 TEST(ControllerStatusIntegrationTest, CurrentTimeEmptyWhenOnlyR3Received) {
   RegisterStore store;
   store.update(",R3,10,20,30,40,50,SW V6 21 12 13,SVM1,21460001,20000999,:");

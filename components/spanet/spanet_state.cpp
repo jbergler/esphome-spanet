@@ -172,6 +172,7 @@ RegisterStore::RegisterStore() {
       .climate = ClimateStatus{},
       .spa_operating = SpaOperatingStatus{},
       .filtration = FiltrationSettings{},
+      .sleep_timers = SleepTimerStatus{},
       .light = LightStatus{},
       .pumps = {},
   };
@@ -248,6 +249,12 @@ void RegisterStore::update_controller_status() {
     this->state.temperatures.setpoint_c = parse_tenths_celsius(r6.set_temperature);
     this->state.filtration.set_hrs = parse_integer(r6.filt_set_hrs);
     this->state.filtration.block_hrs = parse_integer(r6.filt_block_hrs);
+    this->state.sleep_timers.timer1_day_pattern = parse_integer(r6.sleep_timer_1_day);
+    this->state.sleep_timers.timer2_day_pattern = parse_integer(r6.sleep_timer_2_day);
+    this->state.sleep_timers.timer1_begin_wire = parse_integer(r6.sleep_timer_1_begin);
+    this->state.sleep_timers.timer2_begin_wire = parse_integer(r6.sleep_timer_2_begin);
+    this->state.sleep_timers.timer1_end_wire = parse_integer(r6.sleep_timer_1_end);
+    this->state.sleep_timers.timer2_end_wire = parse_integer(r6.sleep_timer_2_end);
   }
 
   // Parse light status from R5[14] (status_13) and R6 fields
