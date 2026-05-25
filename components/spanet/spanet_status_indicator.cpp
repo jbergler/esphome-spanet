@@ -11,6 +11,7 @@
 #include "esphome/components/api/api_server.h"
 #endif
 
+#include <cmath>
 #include <cstdlib>
 
 namespace esphome::spanet {
@@ -179,19 +180,19 @@ void SpaNetStatusIndicator::rgb_set_(uint8_t r, uint8_t g, uint8_t b) {
   auto call = this->rgb_light_->make_call();
   call.set_publish(false);
   call.set_save(false);
+  call.set_transition_length(0);
   if (r == 0 && g == 0 && b == 0) {
     call.set_state(false);
   } else {
     // set_brightness(1.0) ensures the (r,g,b) values map directly to pixel
-    // output without ESPHome rescaling them.
+    // output without additional brightness scaling. ESPHome's gamma correction
+    // is applied to these linear values by the light driver before the hardware.
     call.set_state(true);
     call.set_rgb(r / 255.0f, g / 255.0f, b / 255.0f);
     call.set_brightness(1.0f);
   }
   call.perform();
 }
-
-uint8_t SpaNetStatusIndicator::gamma8_(uint8_t v) { return static_cast<uint8_t>((static_cast<uint16_t>(v) * v) >> 8); }
 
 void SpaNetStatusIndicator::tick_rgb_(StatusState state) {
   // Reset animation phase on state transitions for clean entry.
@@ -207,8 +208,9 @@ void SpaNetStatusIndicator::tick_rgb_(StatusState state) {
       this->anim_phase_ += 128;
       const uint8_t hue = static_cast<uint8_t>(this->anim_phase_ >> 8);
 
-      // Inline HSV→RGB: sat=255, val=40 (comfortable brightness).
-      static constexpr uint8_t SAT = 255, VAL = 40;
+      // Inline HSV→RGB: sat=255, val=150 (linear value; ESPHome gamma maps this
+      // to comfortable brightness on the physical pixel).
+      static constexpr uint8_t SAT = 255, VAL = 150;
       const uint8_t region = hue / 43;
       const uint8_t rem = (hue - region * 43) * 6;
       const uint8_t p = static_cast<uint8_t>((VAL * (255 - SAT)) >> 8);
@@ -238,13 +240,13 @@ void SpaNetStatusIndicator::tick_rgb_(StatusState state) {
     }
 
     case StatusState::kApMode: {
-      // Blue ↔ cyan colour blend.
+      // Blue ↔ cyan colour blend, sinusoidal for smooth transitions.
       // += 437 → 65536/437 ≈ 150 ticks × 20 ms ≈ 3 s cycle.
       this->anim_phase_ += 437;
-      const uint16_t phase = this->anim_phase_;
-      const uint8_t t = static_cast<uint8_t>((phase < 32768u ? phase : (65535u - phase)) >> 7);
-      // {0, 0, 40} ↔ {0, 40, 40}
-      rgb_set_(0, static_cast<uint8_t>(static_cast<uint16_t>(t) * 40 / 255), 40);
+      const float t = this->anim_phase_ * (1.0f / 65536.0f);
+      const float g_frac = (1.0f - std::cosf(2.0f * static_cast<float>(M_PI) * t)) * 0.5f;
+      // {0, 0, 150} ↔ {0, 150, 150}; G computed in float to preserve hue at low brightness.
+      rgb_set_(0, static_cast<uint8_t>(g_frac * 150.0f), 150);
       break;
     }
 
@@ -264,34 +266,49 @@ void SpaNetStatusIndicator::tick_rgb_(StatusState state) {
       } else {
         brightness = 0;  // pause
       }
-      brightness = gamma8_(brightness);
       rgb_set_(brightness, 0, 0);
       break;
     }
 
     case StatusState::kSpaDisconnected: {
-      // Yellow breathing: smooth 2 s fade in/out.
-      // += 655 → 65536/655 ≈ 100 ticks × 20 ms ≈ 2 s cycle.
+      // Yellow breathing: fixed hue {255,180,0}, only brightness varies.
+      // Using set_brightness() keeps ESPHome's per-channel gamma scaling
+      // proportional, so the yellow hue stays constant at all levels.
+      // += 655 → 65536/655 ≈ 100 ticks × 20 ms ≈ 2 s per cycle.
+      // sin³(πt): perceived brightness ∝ sin^3.8(πt) — ~62% of cycle dim.
       this->anim_phase_ += 655;
-      const uint16_t phase = this->anim_phase_;
-      uint8_t b = static_cast<uint8_t>((phase < 32768u ? phase : (65535u - phase)) >> 7);
-      b = gamma8_(b);
-      // Yellow: {255, 180, 0} scaled by brightness b/255.
-      rgb_set_(b, static_cast<uint8_t>(static_cast<uint16_t>(b) * 180 / 255), 0);
+      const float t = this->anim_phase_ * (1.0f / 65536.0f);
+      const float s = std::sinf(static_cast<float>(M_PI) * t);
+      const float frac = s * s * s;
+      {
+        auto call = this->rgb_light_->make_call();
+        call.set_publish(false);
+        call.set_save(false);
+        call.set_transition_length(0);
+        if (frac < 0.001f) {
+          call.set_state(false);
+        } else {
+          call.set_state(true);
+          call.set_rgb(1.0f, 180.0f / 255.0f, 0.0f);
+          call.set_brightness(frac);
+        }
+        call.perform();
+      }
       break;
     }
 
     case StatusState::kApiDisconnected: {
       // Purple sparkle: dim base glow with occasional bright spikes.
-      static constexpr uint8_t BASE_R = 20, BASE_B = 30;
+      // Base values are linear inputs; ESPHome's gamma maps them to dim-but-visible output.
+      static constexpr uint8_t BASE_R = 100, BASE_B = 150;
       uint8_t r, bv;
       if ((rand() % 100) < 15) {
         const uint8_t spike = static_cast<uint8_t>(rand() % 80);
         r = static_cast<uint8_t>(BASE_R + spike / 2);
         bv = static_cast<uint8_t>(BASE_B + spike);
       } else {
-        r = static_cast<uint8_t>(BASE_R + rand() % 10);
-        bv = static_cast<uint8_t>(BASE_B + rand() % 15);
+        r = static_cast<uint8_t>(BASE_R + rand() % 25);
+        bv = static_cast<uint8_t>(BASE_B + rand() % 40);
       }
       rgb_set_(r, 0, bv);
       break;

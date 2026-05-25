@@ -27,6 +27,7 @@ light:
     chipset: WS2812
     rgb_order: GRB
     internal: true
+    default_transition_length: 0s
 
 spanet:
   id: spa_hub

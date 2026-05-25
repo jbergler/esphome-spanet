@@ -46,7 +46,6 @@ class SpaNetStatusIndicator : public Component {
 
   void all_leds_(bool on);
   void rgb_set_(uint8_t r, uint8_t g, uint8_t b);
-  static uint8_t gamma8_(uint8_t v);
 
   SpaNetComponent *parent_;
 
